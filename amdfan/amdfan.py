@@ -8,15 +8,17 @@ import yaml
 import numpy as np
 from rich import console
 from rich.traceback import install
+
 # from rich import inspect # can remove this after debugging
 from rich.logging import RichHandler
+
 install()  # install traceback formatter
 
 CONFIG_LOCATIONS = [
-    '/etc/amdgpu-fan.yml',
+    "/etc/amdgpu-fan.yml",
 ]
 
-DEBUG = bool(os.environ.get('DEBUG', False))
+DEBUG = bool(os.environ.get("DEBUG", False))
 
 ROOT_DIR = "/sys/class/drm"
 HWMON_DIR = "device/hwmon"
@@ -27,70 +29,77 @@ logging.basicConfig(
     level="NOTSET",
     format="%(message)s",
     datefmt="[%X]",
-    handlers=[RichHandler(rich_tracebacks=True)]
+    handlers=[RichHandler(rich_tracebacks=True)],
 )
 
-c = console.Console(style='green on black')
+c = console.Console(style="green on black")
 
 
 class Card:
-    HWMON_REGEX = '^hwmon\d$'
+    HWMON_REGEX = "^hwmon\d$"
+    AMD_FIELDS = ["temp1_input", "pwm1_max", "pwm1_min", "pwm1_enable", "pwm1"]
 
-    def __init__(self, card_identifier):
-        self._identifier = card_identifier
+    def __init__(self, card_id):
+        self._id = card_id
 
-        for node in os.listdir(os.path.join(ROOT_DIR, self._identifier, HWMON_DIR)):
+        for node in os.listdir(os.path.join(ROOT_DIR, self._id, HWMON_DIR)):
             if re.match(self.HWMON_REGEX, node):
                 self._monitor = node
         self._endpoints = self._load_endpoints()
 
     def _verify_card(self):
-        for endpoint in ('temp1_input', 'pwm1_max', 'pwm1_min', 'pwm1_enable', 'pwm1'):
+        for endpoint in self.AMD_FIELDS:
             if endpoint not in self._endpoints:
-                LOGGER.info('skipping card: %s as its missing endpoint %s', self._identifier, endpoint)
+                LOGGER.info(
+                    "skipping card: %s as its missing endpoint %s", self._id, endpoint
+                )
                 raise FileNotFoundError
 
     def _load_endpoints(self):
         _endpoints = {}
-        _dir = os.path.join(ROOT_DIR, self._identifier, HWMON_DIR, self._monitor)
+        _dir = os.path.join(ROOT_DIR, self._id, HWMON_DIR, self._monitor)
         for endpoint in os.listdir(_dir):
-            if endpoint not in ('device', 'power', 'subsystem', 'uevent'):
+            if endpoint not in ("device", "power", "subsystem", "uevent"):
                 _endpoints[endpoint] = os.path.join(_dir, endpoint)
         return _endpoints
 
     def read_endpoint(self, endpoint):
-        with open(self._endpoints[endpoint], 'r') as e:
+        with open(self._endpoints[endpoint], "r") as e:
             return e.read()
 
     def write_endpoint(self, endpoint, data):
         try:
-            with open(self._endpoints[endpoint], 'w') as e:
+            with open(self._endpoints[endpoint], "w") as e:
                 return e.write(str(data))
         except PermissionError:
-            LOGGER.error('Failed writing to devfs file, are you sure your running as root?')
+            LOGGER.error(
+                "Failed writing to devfs file, are you sure your running as root?"
+            )
             sys.exit(1)
 
     @property
     def fan_speed(self):
         try:
-            return int(self.read_endpoint('fan1_input'))
+            return int(self.read_endpoint("fan1_input"))
         except KeyError:  # better to return no speed then explode
             return 0
 
     @property
     def gpu_temp(self):
-        return float(self.read_endpoint('temp1_input')) / 1000
+        return float(self.read_endpoint("temp1_input")) / 1000
 
     @property
     def fan_max(self):
-        return int(self.read_endpoint('pwm1_max'))
+        return int(self.read_endpoint("pwm1_max"))
 
     @property
     def fan_min(self):
-        return int(self.read_endpoint('pwm1_min'))
+        return int(self.read_endpoint("pwm1_min"))
 
     def set_system_controlled_fan(self, state):
-        self.write_endpoint('pwm1_enable', 2 if state else 1)  # actually go to the right pwm state
+        self.write_endpoint(
+            "pwm1_enable", 2 if state else 1
+        )  # actually go to the right pwm state
         # self.write_endpoint('pwm1_enable', 0 if state else 1)
 
     def set_fan_speed(self, speed):
@@ -101,7 +110,7 @@ class Card:
         else:
             speed = self.fan_max / 100 * speed
         self.set_system_controlled_fan(False)
-        return self.write_endpoint('pwm1', int(speed))
+        return self.write_endpoint("pwm1", int(speed))
 
 
 class Scanner:
@@ -118,7 +127,9 @@ class Scanner:
         cards = {}
         for node in os.listdir(ROOT_DIR):
             if re.match(self.CARD_REGEX, node):
-                if cards_to_scan and node.lower() not in [c.lower() for c in cards_to_scan]:
+                if cards_to_scan and node.lower() not in [
+                    c.lower() for c in cards_to_scan
+                ]:
                     continue
                 try:
                     cards[node] = Card(node)
@@ -131,15 +142,15 @@ class Scanner:
 
 class FanController:
     def __init__(self, config):
-        self._scanner = Scanner(config.get('cards'))
+        self._scanner = Scanner(config.get("cards"))
         if len(self._scanner.cards) < 1:
-            LOGGER.error('no compatible cards found, exiting')
+            LOGGER.error("no compatible cards found, exiting")
             sys.exit(1)
-        self.curve = Curve(config.get('speed_matrix'))
+        self.curve = Curve(config.get("speed_matrix"))
         self._frequency = 1
 
     def main(self):
-        LOGGER.info('starting amdgpu-fan')
+        LOGGER.info("starting amdgpu-fan")
         while True:
             for name, card in self._scanner.cards.items():
                 temp = card.gpu_temp
@@ -147,21 +158,23 @@ class FanController:
                 if speed < 0:
                     speed = 0
 
-                LOGGER.debug(f'{name}: Temp {temp}, Setting fan speed to: {speed}, fan speed{card.fan_speed}, min:{card.fan_min}, max:{card.fan_max}')
+                LOGGER.debug(
+                    f"{name}: Temp {temp}, Setting fan speed to: {speed}, fan speed{card.fan_speed}, min:{card.fan_min}, max:{card.fan_max}"
+                )
 
                 card.set_fan_speed(speed)
             time.sleep(self._frequency)
 
 
 def load_config(path):
-    LOGGER.debug(f'loading config from {path}')
+    LOGGER.debug(f"loading config from {path}")
     with open(path) as f:
         return yaml.safe_load(f)
 
 
 def main():
 
-    default_fan_config = '''#Fan Control Matrix. [<Temp in C>,<Fanspeed in %>]
+    default_fan_config = """#Fan Control Matrix. [<Temp in C>,<Fanspeed in %>]
 speed_matrix:
 - [0, 0]
 - [30, 33]
@@ -175,7 +188,7 @@ speed_matrix:
 # optional
 # cards:  # can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
 # - card0
-'''
+"""
     config = None
     for location in CONFIG_LOCATIONS:
         if os.path.isfile(location):
@@ -183,8 +196,8 @@ speed_matrix:
             break
 
     if config is None:
-        LOGGER.info(f'no config found, creating one in {CONFIG_LOCATIONS[-1]}')
-        with open(CONFIG_LOCATIONS[-1], 'w') as f:
+        LOGGER.info(f"no config found, creating one in {CONFIG_LOCATIONS[-1]}")
+        with open(CONFIG_LOCATIONS[-1], "w") as f:
             f.write(default_fan_config)
             f.flush()
 
@@ -197,19 +210,28 @@ class Curve:
     """
     creates a fan curve based on user defined points
     """
+
     def __init__(self, points: list):
         self.points = np.array(points)
         self.temps = self.points[:, 0]
         self.speeds = self.points[:, 1]
 
         if np.min(self.speeds) < 0:
-            raise ValueError('Fan curve contains negative speeds, speed should be in [0,100]')
+            raise ValueError(
+                "Fan curve contains negative speeds, speed should be in [0,100]"
+            )
         if np.max(self.speeds) > 100:
-            raise ValueError('Fan curve contains speeds greater than 100, speed should be in [0,100]')
+            raise ValueError(
+                "Fan curve contains speeds greater than 100, speed should be in [0,100]"
+            )
         if np.any(np.diff(self.temps) <= 0):
-            raise ValueError('Fan curve points should be strictly monotonically increasing, configuration error ?')
+            raise ValueError(
+                "Fan curve points should be strictly monotonically increasing, configuration error ?"
+            )
         if np.any(np.diff(self.speeds) < 0):
-            raise ValueError('Curve fan speeds should be monotonically increasing, configuration error ?')
+            raise ValueError(
+                "Curve fan speeds should be monotonically increasing, configuration error ?"
+            )
 
     def get_speed(self, temp):
         """
@@ -241,12 +263,15 @@ def show_table(scanner):
     return table
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from rich.prompt import Prompt
     from rich.table import Table
     from rich.live import Live
+
     c.print("AMD Fan Control")
-    command = Prompt.ask("Please select get or set", choices=["get", "set"], default="get")
+    command = Prompt.ask(
+        "Please select get or set", choices=["get", "set"], default="get"
+    )
     scanner = Scanner()
     if command == "get":
         with Live(refresh_per_second=4) as live:
@@ -268,7 +293,7 @@ if __name__ == '__main__':
                 break
             c.print("maybe try picking one of the options")
 
-        if not fan_speed.isdigit() and fan_speed == 'auto':
+        if not fan_speed.isdigit() and fan_speed == "auto":
             LOGGER.info("Setting fan speed to system controlled")
             scanner.cards.get(card_to_set).set_system_controlled_fan(True)
         else:

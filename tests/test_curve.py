@@ -8,4 +8,3 @@ class TestCurve(unittest.TestCase):
         curve = Curve([[0, 0], [100, 100]])
         for speed in range(0, 100):
             self.assertEqual(speed, curve.get_speed(speed))
-
