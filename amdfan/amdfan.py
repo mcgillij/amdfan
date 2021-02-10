@@ -51,7 +51,7 @@ class Card:
         for endpoint in self.AMD_FIELDS:
             if endpoint not in self._endpoints:
                 LOGGER.info(
-                    "skipping card: %s as its missing endpoint %s", self._id, endpoint
+                    f"skipping card: {self._id} missing endpoint {endpoint}"
                 )
                 raise FileNotFoundError
 
@@ -73,7 +73,7 @@ class Card:
                 return e.write(str(data))
         except PermissionError:
             LOGGER.error(
-                "Failed writing to devfs file, are you sure your running as root?"
+                "Failed writing to devfs file, are you running as root?"
             )
             sys.exit(1)
 
@@ -97,10 +97,13 @@ class Card:
         return int(self.read_endpoint("pwm1_min"))
 
     def set_system_controlled_fan(self, state):
+
+        system_controlled_fan = 2
+        manual_control = 1
+
         self.write_endpoint(
-            "pwm1_enable", 2 if state else 1
-        )  # actually go to the right pwm state
-        # self.write_endpoint('pwm1_enable', 0 if state else 1)
+            "pwm1_enable", system_controlled_fan if state else manual_control
+        )
 
     def set_fan_speed(self, speed):
         if speed >= 100:
@@ -134,7 +137,7 @@ class Scanner:
                 try:
                     cards[node] = Card(node)
                 except FileNotFoundError:
-                    # if card lacks hwmon or the required devfs files, its likely not
+                    # if card lacks hwmon or required devfs files, its not
                     # amdgpu, and definitely not compatible with this software
                     continue
         return cards
@@ -159,7 +162,10 @@ class FanController:
                     speed = 0
 
                 LOGGER.debug(
-                    f"{name}: Temp {temp}, Setting fan speed to: {speed}, fan speed{card.fan_speed}, min:{card.fan_min}, max:{card.fan_max}"
+                    f"{name}: Temp {temp}, \
+                            Setting fan speed to: {speed}, \
+                            fan speed{card.fan_speed}, \
+                            min:{card.fan_min}, max:{card.fan_max}"
                 )
 
                 card.set_fan_speed(speed)
@@ -186,7 +192,8 @@ speed_matrix:
 - [80, 100]
 
 # optional
-# cards:  # can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
+# cards:
+# can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
 # - card0
 """
     config = None
@@ -218,19 +225,23 @@ class Curve:
 
         if np.min(self.speeds) < 0:
             raise ValueError(
-                "Fan curve contains negative speeds, speed should be in [0,100]"
+                "Fan curve contains negative speeds, \
+                        speed should be in [0,100]"
             )
         if np.max(self.speeds) > 100:
             raise ValueError(
-                "Fan curve contains speeds greater than 100, speed should be in [0,100]"
+                "Fan curve contains speeds greater than 100, \
+                        speed should be in [0,100]"
             )
         if np.any(np.diff(self.temps) <= 0):
             raise ValueError(
-                "Fan curve points should be strictly monotonically increasing, configuration error ?"
+                "Fan curve points should be strictly monotonically increasing, \
+                        configuration error ?"
             )
         if np.any(np.diff(self.speeds) < 0):
             raise ValueError(
-                "Curve fan speeds should be monotonically increasing, configuration error ?"
+                "Curve fan speeds should be monotonically increasing, \
+                        configuration error ?"
             )
 
     def get_speed(self, temp):
@@ -282,7 +293,9 @@ if __name__ == "__main__":
     elif command == "set":
         card_to_set = Prompt.ask("Which card?", choices=scanner.cards.keys())
         while True:
-            fan_speed = Prompt.ask("Fan speed, [1%..100%] or 'auto'", default="auto")
+            fan_speed = Prompt.ask(
+                    "Fan speed, [1%..100%] or 'auto'", default="auto"
+                    )
 
             if fan_speed.isdigit():
                 if int(fan_speed) >= 1 and int(fan_speed) <= 100:
@@ -298,5 +311,9 @@ if __name__ == "__main__":
             scanner.cards.get(card_to_set).set_system_controlled_fan(True)
         else:
             LOGGER.info(f"Setting fan speed to {fan_speed}%")
-            c.print(scanner.cards.get(card_to_set).set_fan_speed(int(fan_speed)))
+            c.print(
+                    scanner.cards.get(card_to_set).set_fan_speed(
+                        int(fan_speed)
+                        )
+                    )
     sys.exit(1)
