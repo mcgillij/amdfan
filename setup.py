@@ -16,12 +16,15 @@ setup(
     author_email="mcgillivray.jason@gmail.com",
     maintainer="Jason McGillivray",
     maintainer_email="mcgillivray.jason@gmail.com",
-    description="amdgpu fan controller",
+    description="amdfan control",
     long_description=readme,
+    package_data={'': ['amdfan.service']},
+    include_package_data=True,
     install_requires=[
         "pyyaml",
         "numpy",
         "rich",
+        "click",
     ],
     entry_points="""
         [console_scripts]

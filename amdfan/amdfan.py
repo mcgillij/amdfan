@@ -17,6 +17,7 @@ install()  # install traceback formatter
 
 CONFIG_LOCATIONS = [
     "/etc/amdgpu-fan.yml",
+    "/home/j/amdgpu-fan.yml",  # remove later
 ]
 
 DEBUG = bool(os.environ.get("DEBUG", False))
