@@ -7,8 +7,13 @@ import sys
 import time
 import yaml
 import numpy as np
+import click
+
 from rich import console
 from rich.traceback import install
+from rich.prompt import Prompt
+from rich.table import Table
+from rich.live import Live
 
 # from rich import inspect # can remove this after debugging
 from rich.logging import RichHandler
@@ -195,11 +200,23 @@ def load_config(path):
         return yaml.safe_load(config_file)
 
 
-def main():
+@click.command()
+@click.option(
+        '--daemon/--monitor',
+        default=False,
+        help='Run as daemon applying the fan curve')
+def cli(daemon):
+    if daemon:
+        run_as_daemon()
+    else:
+        monitor()
+
+
+def run_as_daemon():
 
     default_fan_config = """#Fan Control Matrix. [<Temp in C>,<Fanspeed in %>]
 speed_matrix:
-- [0, 0]
+- [4, 4]
 - [30, 33]
 - [45, 50]
 - [60, 66]
@@ -208,6 +225,7 @@ speed_matrix:
 - [75, 89]
 - [80, 100]
 
+# Current Min supported value is 4 due to driver bug
 # optional
 # cards:
 # can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
@@ -263,7 +281,7 @@ class Curve:
                         configuration error ?"
             )
         if np.min(self.speeds) <= 3:
-            raise ValueError('Current driver bugs require lowest speed value to be set to 4')
+            raise ValueError('Lowest speed value to be set to 4')  # Driver BUG
 
     def get_speed(self, temp):
         """
@@ -295,11 +313,7 @@ def show_table(cards):
     return table
 
 
-if __name__ == "__main__":
-    from rich.prompt import Prompt
-    from rich.table import Table
-    from rich.live import Live
-
+def monitor():
     c.print("AMD Fan Control")
     command = Prompt.ask(
         "Please select get or set", choices=["get", "set"], default="get"
@@ -335,3 +349,7 @@ if __name__ == "__main__":
             LOGGER.info("Setting fan speed to %d", input_fan_speed)
             c.print(selected_card.set_fan_speed(int(input_fan_speed)))
     sys.exit(1)
+
+
+if __name__ == "__main__":
+    cli()
