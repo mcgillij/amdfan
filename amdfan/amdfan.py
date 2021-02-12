@@ -1,3 +1,4 @@
+""" Main amdfan script """
 # noqa: E501
 import logging
 import os
@@ -36,7 +37,11 @@ c = console.Console(style="green on black")
 
 
 class Card:
-    HWMON_REGEX = "^hwmon\d$"
+    """
+    This class is used to map to each card that supports HWMON
+    """
+
+    HWMON_REGEX = r"^hwmon\d$"
     AMD_FIELDS = ["temp1_input", "pwm1_max", "pwm1_min", "pwm1_enable", "pwm1"]
 
     def __init__(self, card_id):
@@ -51,8 +56,9 @@ class Card:
         for endpoint in self.AMD_FIELDS:
             if endpoint not in self._endpoints:
                 LOGGER.info(
-                    f"skipping card: {self._id} missing endpoint {endpoint}"
-                )
+                        "skipping card: %s missing endpoint %s",
+                        self._id, endpoint
+                        )
                 raise FileNotFoundError
 
     def _load_endpoints(self):
@@ -73,8 +79,8 @@ class Card:
                 return e.write(str(data))
         except PermissionError:
             LOGGER.error(
-                "Failed writing to devfs file, are you running as root?"
-            )
+                    "Failed writing to devfs file, are you running as root?"
+                    )
             sys.exit(1)
 
     @property
@@ -117,7 +123,9 @@ class Card:
 
 
 class Scanner:
-    CARD_REGEX = "^card\d$"
+    """ Used to scan the available cards to see if they are usable """
+
+    CARD_REGEX = r"^card\d$"
 
     def __init__(self, cards=None):
         self.cards = self._get_cards(cards)
@@ -144,6 +152,8 @@ class Scanner:
 
 
 class FanController:
+    """ Used to apply the curve at regular intervals """
+
     def __init__(self, config):
         self._scanner = Scanner(config.get("cards"))
         if len(self._scanner.cards) < 1:
@@ -162,10 +172,16 @@ class FanController:
                     speed = 0
 
                 LOGGER.debug(
-                    f"{name}: Temp {temp}, \
-                            Setting fan speed to: {speed}, \
-                            fan speed{card.fan_speed}, \
-                            min:{card.fan_min}, max:{card.fan_max}"
+                    "%s: Temp %d, \
+                            Setting fan speed to: %d, \
+                            fan speed %d, \
+                            min: %d, max: %d",
+                    name,
+                    temp,
+                    speed,
+                    card.fan_speed,
+                    card.fan_min,
+                    card.fan_max,
                 )
 
                 card.set_fan_speed(speed)
@@ -173,9 +189,9 @@ class FanController:
 
 
 def load_config(path):
-    LOGGER.debug(f"loading config from {path}")
-    with open(path) as f:
-        return yaml.safe_load(f)
+    LOGGER.debug("loading config from %s", path)
+    with open(path) as config_file:
+        return yaml.safe_load(config_file)
 
 
 def main():
@@ -203,10 +219,12 @@ speed_matrix:
             break
 
     if config is None:
-        LOGGER.info(f"no config found, creating one in {CONFIG_LOCATIONS[-1]}")
-        with open(CONFIG_LOCATIONS[-1], "w") as f:
-            f.write(default_fan_config)
-            f.flush()
+        LOGGER.info(
+                "no config found, creating one in %s", CONFIG_LOCATIONS[-1]
+                )
+        with open(CONFIG_LOCATIONS[-1], "w") as config_file:
+            config_file.write(default_fan_config)
+            config_file.flush()
 
         config = load_config(CONFIG_LOCATIONS[-1])
 
@@ -262,14 +280,14 @@ def test_curve():
     c.print(curve.get_speed(0))
 
 
-def show_table(scanner):
+def show_table(cards):
     table = Table(title="amdgpu")
     table.add_column("Card")
-    table.add_column("fan_speed")
-    table.add_column("gpu_temp")
-    for card in scanner.cards:
-        fan_speed = scanner.cards.get(card).fan_speed
-        gpu_temp = scanner.cards.get(card).gpu_temp
+    table.add_column("fan_speed (RPM)")
+    table.add_column("gpu_temp ℃")
+    for card in cards:
+        fan_speed = cards.get(card).fan_speed
+        gpu_temp = cards.get(card).gpu_temp
         table.add_row(f"{card}", f"{fan_speed}", f"{gpu_temp}")
     return table
 
@@ -288,32 +306,29 @@ if __name__ == "__main__":
         with Live(refresh_per_second=4) as live:
             for _ in range(40):
                 time.sleep(0.4)
-                live.update(show_table(scanner))
+                live.update(show_table(scanner.cards))
 
     elif command == "set":
         card_to_set = Prompt.ask("Which card?", choices=scanner.cards.keys())
         while True:
-            fan_speed = Prompt.ask(
-                    "Fan speed, [1%..100%] or 'auto'", default="auto"
+            input_fan_speed = Prompt.ask(
+                    "Fan speed, [1..100]% or 'auto'", default="auto"
                     )
 
-            if fan_speed.isdigit():
-                if int(fan_speed) >= 1 and int(fan_speed) <= 100:
-                    LOGGER.info(f"good {fan_speed}")
+            if input_fan_speed.isdigit():
+                if int(input_fan_speed) >= 1 and int(input_fan_speed) <= 100:
+                    LOGGER.info("good %d", input_fan_speed)
                     break
-            elif fan_speed == "auto":
-                LOGGER.info(f"good {fan_speed}")
+            elif input_fan_speed == "auto":
+                LOGGER.info("good %d", input_fan_speed)
                 break
             c.print("maybe try picking one of the options")
 
-        if not fan_speed.isdigit() and fan_speed == "auto":
+        selected_card = scanner.cards.get(card_to_set)
+        if not input_fan_speed.isdigit() and input_fan_speed == "auto":
             LOGGER.info("Setting fan speed to system controlled")
-            scanner.cards.get(card_to_set).set_system_controlled_fan(True)
+            selected_card.set_system_controlled_fan(True)
         else:
-            LOGGER.info(f"Setting fan speed to {fan_speed}%")
-            c.print(
-                    scanner.cards.get(card_to_set).set_fan_speed(
-                        int(fan_speed)
-                        )
-                    )
+            LOGGER.info("Setting fan speed to %d", input_fan_speed)
+            c.print(selected_card.set_fan_speed(int(input_fan_speed)))
     sys.exit(1)
