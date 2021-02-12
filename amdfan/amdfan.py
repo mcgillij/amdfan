@@ -262,6 +262,8 @@ class Curve:
                 "Curve fan speeds should be monotonically increasing, \
                         configuration error ?"
             )
+        if np.min(self.speeds) <= 3:
+            raise ValueError('Current driver bugs require lowest speed value to be set to 4')
 
     def get_speed(self, temp):
         """
