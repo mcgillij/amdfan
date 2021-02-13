@@ -349,7 +349,3 @@ def monitor():
             LOGGER.info("Setting fan speed to %d", input_fan_speed)
             c.print(selected_card.set_fan_speed(int(input_fan_speed)))
     sys.exit(1)
-
-
-if __name__ == "__main__":
-    cli()
