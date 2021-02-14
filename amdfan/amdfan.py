@@ -382,4 +382,4 @@ def monitor():
 
 
 if __name__ == '__main__':
-    cli()
+    cli()  # pylint: disable=no-value-for-parameter
