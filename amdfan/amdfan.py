@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """ Main amdfan script """
 # noqa: E501
 import logging
@@ -24,8 +25,6 @@ CONFIG_LOCATIONS = [
     "/etc/amdgpu-fan.yml",
     "/home/j/amdgpu-fan.yml",  # remove later
 ]
-
-DEBUG = bool(os.environ.get("DEBUG", False))
 
 ROOT_DIR = "/sys/class/drm"
 HWMON_DIR = "device/hwmon"
@@ -76,13 +75,13 @@ class Card:
         return _endpoints
 
     def read_endpoint(self, endpoint):
-        with open(self._endpoints[endpoint], "r") as e:
-            return e.read()
+        with open(self._endpoints[endpoint], "r") as endpoint_file:
+            return endpoint_file.read()
 
     def write_endpoint(self, endpoint, data):
         try:
-            with open(self._endpoints[endpoint], "w") as e:
-                return e.write(str(data))
+            with open(self._endpoints[endpoint], "w") as endpoint_file:
+                return endpoint_file.write(str(data))
         except PermissionError:
             LOGGER.error(
                     "Failed writing to devfs file, are you running as root?"
@@ -128,7 +127,7 @@ class Card:
         return self.write_endpoint("pwm1", int(speed))
 
 
-class Scanner:
+class Scanner:  # pylint: disable=too-few-public-methods
     """ Used to scan the available cards to see if they are usable """
 
     CARD_REGEX = r"^card\d$"
@@ -157,7 +156,7 @@ class Scanner:
         return cards
 
 
-class FanController:
+class FanController:  # pylint: disable=too-few-public-methods
     """ Used to apply the curve at regular intervals """
 
     def __init__(self, config):
@@ -166,31 +165,57 @@ class FanController:
             LOGGER.error("no compatible cards found, exiting")
             sys.exit(1)
         self.curve = Curve(config.get("speed_matrix"))
-        self._frequency = 1
+        # default to 5 if frequency not set
+        self._threshold = config.get("threshold")
+        self._frequency = config.get("frequency", 5)
+        self._last_temp = 0
 
     def main(self):
         LOGGER.info("starting amdgpu-fan")
         while True:
             for name, card in self._scanner.cards.items():
+                apply = True
                 temp = card.gpu_temp
                 speed = int(self.curve.get_speed(int(temp)))
                 if speed < 0:
-                    speed = 0
+                    speed = 4  # due to driver bug
 
                 LOGGER.debug(
                     "%s: Temp %d, \
-                            Setting fan speed to: %d, \
+                            last temp: %d \
+                            target fan speed: %d, \
                             fan speed %d, \
                             min: %d, max: %d",
                     name,
                     temp,
+                    self._last_temp,
                     speed,
                     card.fan_speed,
                     card.fan_min,
                     card.fan_max,
                 )
+                if self._threshold and self._last_temp:
 
-                card.set_fan_speed(speed)
+                    LOGGER.debug("threshold and last temp, checking")
+                    low = self._last_temp - self._threshold
+                    high = self._last_temp + self._threshold
+
+                    c.print(f"{low} and {high} and {temp}")
+                    if int(temp) in range(int(low), int(high)):
+                        LOGGER.debug("temp in range doing nothing")
+                        apply = False
+                    else:
+                        LOGGER.debug("temp out of range setting")
+                        card.set_fan_speed(speed)
+                        self._last_temp = temp
+                        continue
+
+                c.print(f"apply value {apply}")
+                if apply:
+                    LOGGER.debug("in bottom case")
+                    card.set_fan_speed(speed)
+                    self._last_temp = temp
+
             time.sleep(self._frequency)
 
 
@@ -226,7 +251,12 @@ speed_matrix:
 - [80, 100]
 
 # Current Min supported value is 4 due to driver bug
-# optional
+#
+# Optional configuration options
+#
+# threshold: 2
+# frequency: 5
+#
 # cards:
 # can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
 # - card0
@@ -250,7 +280,7 @@ speed_matrix:
     FanController(config).main()
 
 
-class Curve:
+class Curve:  # pylint: disable=too-few-public-methods
     """
     creates a fan curve based on user defined points
     """
@@ -349,3 +379,7 @@ def monitor():
             LOGGER.info("Setting fan speed to %d", input_fan_speed)
             c.print(selected_card.set_fan_speed(int(input_fan_speed)))
     sys.exit(1)
+
+
+if __name__ == '__main__':
+    cli()
