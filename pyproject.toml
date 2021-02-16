@@ -1,8 +1,27 @@
 [tool.poetry]
 name = "amdfan"
-version = "0.1.0"
-description = ""
+version = "0.1.3"
+description = "Fan monitor and controller for AMD gpus in Linux"
 authors = ["mcgillij <mcgillivray.jason@gmail.com>"]
+license = "GPL-2.0-only"
+readme = "README.md"
+homepage = "https://mcgillij.dev/amdfan.html"
+repository = "https://github.com/mcgillij/amdfan"
+documentation = "https://github.com/mcgillij/amdfan"
+keywords = ["fan", "gpu", "temp", "monitor", "amd"]
+classifiers = [
+    "Environment :: Console",
+    "Environment :: GPU",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: System :: Boot :: Init",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Monitoring",
+    "Topic :: Utilities",
+]
+
+include = [ "LICENSE", ]
 
 [tool.poetry.dependencies]
 python = "^3.9"
