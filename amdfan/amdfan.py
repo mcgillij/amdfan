@@ -15,10 +15,7 @@ from rich.traceback import install
 from rich.prompt import Prompt
 from rich.table import Table
 from rich.live import Live
-
-# from rich import inspect # can remove this after debugging
 from rich.logging import RichHandler
-
 install()  # install traceback formatter
 
 CONFIG_LOCATIONS = [
@@ -26,13 +23,15 @@ CONFIG_LOCATIONS = [
     "/home/j/amdgpu-fan.yml",  # remove later
 ]
 
+DEBUG = bool(os.environ.get('DEBUG', False))
+
 ROOT_DIR = "/sys/class/drm"
 HWMON_DIR = "device/hwmon"
 
 LOGGER = logging.getLogger("rich")
 
 logging.basicConfig(
-    level="NOTSET",
+    level=logging.DEBUG if DEBUG else logging.INFO,
     format="%(message)s",
     datefmt="[%X]",
     handlers=[RichHandler(rich_tracebacks=True)],
@@ -200,7 +199,7 @@ class FanController:  # pylint: disable=too-few-public-methods
                     low = self._last_temp - self._threshold
                     high = self._last_temp + self._threshold
 
-                    c.print(f"{low} and {high} and {temp}")
+                    LOGGER.debug("%d and %d and %d", low, high, temp)
                     if int(temp) in range(int(low), int(high)):
                         LOGGER.debug("temp in range doing nothing")
                         apply = False
@@ -210,74 +209,11 @@ class FanController:  # pylint: disable=too-few-public-methods
                         self._last_temp = temp
                         continue
 
-                c.print(f"apply value {apply}")
                 if apply:
-                    LOGGER.debug("in bottom case")
                     card.set_fan_speed(speed)
                     self._last_temp = temp
 
             time.sleep(self._frequency)
-
-
-def load_config(path):
-    LOGGER.debug("loading config from %s", path)
-    with open(path) as config_file:
-        return yaml.safe_load(config_file)
-
-
-@click.command()
-@click.option(
-        '--daemon/--monitor',
-        default=False,
-        help='Run as daemon applying the fan curve')
-def cli(daemon):
-    if daemon:
-        run_as_daemon()
-    else:
-        monitor()
-
-
-def run_as_daemon():
-
-    default_fan_config = """#Fan Control Matrix. [<Temp in C>,<Fanspeed in %>]
-speed_matrix:
-- [4, 4]
-- [30, 33]
-- [45, 50]
-- [60, 66]
-- [65, 69]
-- [70, 75]
-- [75, 89]
-- [80, 100]
-
-# Current Min supported value is 4 due to driver bug
-#
-# Optional configuration options
-#
-# threshold: 2
-# frequency: 5
-#
-# cards:
-# can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
-# - card0
-"""
-    config = None
-    for location in CONFIG_LOCATIONS:
-        if os.path.isfile(location):
-            config = load_config(location)
-            break
-
-    if config is None:
-        LOGGER.info(
-                "no config found, creating one in %s", CONFIG_LOCATIONS[-1]
-                )
-        with open(CONFIG_LOCATIONS[-1], "w") as config_file:
-            config_file.write(default_fan_config)
-            config_file.flush()
-
-        config = load_config(CONFIG_LOCATIONS[-1])
-
-    FanController(config).main()
 
 
 class Curve:  # pylint: disable=too-few-public-methods
@@ -323,12 +259,80 @@ class Curve:  # pylint: disable=too-few-public-methods
         return np.interp(x=temp, xp=self.temps, fp=self.speeds)
 
 
-def test_curve():
-    curve = Curve([[10, 10], [20, 20], [30, 30], [70, 80], [80, 100]])
-    c.print(curve.get_speed(60))
-    c.print(curve.get_speed(50))
-    c.print(curve.get_speed(80))
-    c.print(curve.get_speed(0))
+def load_config(path):
+    LOGGER.debug("loading config from %s", path)
+    with open(path) as config_file:
+        return yaml.safe_load(config_file)
+
+
+@click.command()
+@click.option(
+        '--daemon',
+        is_flag=True,
+        default=False,
+        help='Run as daemon applying the fan curve')
+@click.option(
+        '--monitor',
+        is_flag=True,
+        default=False,
+        help='Run as a monitor showing temp and fan speed')
+@click.option(
+        '--manual',
+        is_flag=True,
+        default=False,
+        help='Manually set the fan speed value of a card')
+def cli(daemon, monitor, manual):
+    if daemon:
+        run_as_daemon()
+    elif monitor:
+        monitor_cards()
+    elif manual:
+        set_fan_speed()
+    else:
+        c.print("Try: --help to see the options")
+
+
+def run_as_daemon():
+
+    default_fan_config = """#Fan Control Matrix. [<Temp in C>,<Fanspeed in %>]
+speed_matrix:
+- [4, 4]
+- [30, 33]
+- [45, 50]
+- [60, 66]
+- [65, 69]
+- [70, 75]
+- [75, 89]
+- [80, 100]
+
+# Current Min supported value is 4 due to driver bug
+#
+# Optional configuration options
+#
+# threshold: 2
+# frequency: 5
+#
+# cards:
+# can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
+# - card0
+"""
+    config = None
+    for location in CONFIG_LOCATIONS:
+        if os.path.isfile(location):
+            config = load_config(location)
+            break
+
+    if config is None:
+        LOGGER.info(
+                "no config found, creating one in %s", CONFIG_LOCATIONS[-1]
+                )
+        with open(CONFIG_LOCATIONS[-1], "w") as config_file:
+            config_file.write(default_fan_config)
+            config_file.flush()
+
+        config = load_config(CONFIG_LOCATIONS[-1])
+
+    FanController(config).main()
 
 
 def show_table(cards):
@@ -343,42 +347,39 @@ def show_table(cards):
     return table
 
 
-def monitor():
-    c.print("AMD Fan Control")
-    command = Prompt.ask(
-        "Please select get or set", choices=["get", "set"], default="get"
-    )
+def monitor_cards():
+    c.print("AMD Fan Control - ctrl-c to quit")
     scanner = Scanner()
-    if command == "get":
-        with Live(refresh_per_second=4) as live:
-            for _ in range(40):
-                time.sleep(0.4)
-                live.update(show_table(scanner.cards))
+    with Live(refresh_per_second=4) as live:
+        while 1:
+            time.sleep(0.4)
+            live.update(show_table(scanner.cards))
 
-    elif command == "set":
-        card_to_set = Prompt.ask("Which card?", choices=scanner.cards.keys())
-        while True:
-            input_fan_speed = Prompt.ask(
-                    "Fan speed, [1..100]% or 'auto'", default="auto"
-                    )
 
-            if input_fan_speed.isdigit():
-                if int(input_fan_speed) >= 1 and int(input_fan_speed) <= 100:
-                    LOGGER.info("good %d", input_fan_speed)
-                    break
-            elif input_fan_speed == "auto":
-                LOGGER.info("good %d", input_fan_speed)
+def set_fan_speed():
+    scanner = Scanner()
+    card_to_set = Prompt.ask("Which card?", choices=scanner.cards.keys())
+    while True:
+        input_fan_speed = Prompt.ask(
+                "Fan speed, [1..100]% or 'auto'", default="auto"
+                )
+
+        if input_fan_speed.isdigit():
+            if int(input_fan_speed) >= 1 and int(input_fan_speed) <= 100:
+                LOGGER.info("good %d", int(input_fan_speed))
                 break
-            c.print("maybe try picking one of the options")
+        elif input_fan_speed == "auto":
+            LOGGER.info("fan speed set to auto")
+            break
+        c.print("maybe try picking one of the options")
 
-        selected_card = scanner.cards.get(card_to_set)
-        if not input_fan_speed.isdigit() and input_fan_speed == "auto":
-            LOGGER.info("Setting fan speed to system controlled")
-            selected_card.set_system_controlled_fan(True)
-        else:
-            LOGGER.info("Setting fan speed to %d", input_fan_speed)
-            c.print(selected_card.set_fan_speed(int(input_fan_speed)))
-    sys.exit(1)
+    selected_card = scanner.cards.get(card_to_set)
+    if not input_fan_speed.isdigit() and input_fan_speed == "auto":
+        LOGGER.info("Setting fan speed to system controlled")
+        selected_card.set_system_controlled_fan(True)
+    else:
+        LOGGER.info("Setting fan speed to %d", int(input_fan_speed))
+        c.print(selected_card.set_fan_speed(int(input_fan_speed)))
 
 
 if __name__ == '__main__':
