@@ -170,7 +170,7 @@ class FanController:  # pylint: disable=too-few-public-methods
         self._last_temp = 0
 
     def main(self):
-        LOGGER.info("starting amdgpu-fan")
+        LOGGER.info("Starting amdfan")
         while True:
             for name, card in self._scanner.cards.items():
                 apply = True
@@ -294,7 +294,8 @@ def cli(daemon, monitor, manual):
 
 def run_as_daemon():
 
-    default_fan_config = """#Fan Control Matrix. [<Temp in C>,<Fanspeed in %>]
+    default_fan_config = """#Fan Control Matrix.
+# [<Temp in C>,<Fanspeed in %>]
 speed_matrix:
 - [4, 4]
 - [30, 33]
@@ -309,7 +310,10 @@ speed_matrix:
 #
 # Optional configuration options
 #
+# Allows for some leeway +/- temp, as to not constantly change fan speed
 # threshold: 2
+#
+# Frequency will chance how often we probe for the temp
 # frequency: 5
 #
 # cards:
@@ -324,7 +328,7 @@ speed_matrix:
 
     if config is None:
         LOGGER.info(
-                "no config found, creating one in %s", CONFIG_LOCATIONS[-1]
+                "No config found, creating one in %s", CONFIG_LOCATIONS[-1]
                 )
         with open(CONFIG_LOCATIONS[-1], "w") as config_file:
             config_file.write(default_fan_config)
@@ -366,10 +370,10 @@ def set_fan_speed():
 
         if input_fan_speed.isdigit():
             if int(input_fan_speed) >= 1 and int(input_fan_speed) <= 100:
-                LOGGER.info("good %d", int(input_fan_speed))
+                LOGGER.debug("good %d", int(input_fan_speed))
                 break
         elif input_fan_speed == "auto":
-            LOGGER.info("fan speed set to auto")
+            LOGGER.debug("fan speed set to auto")
             break
         c.print("maybe try picking one of the options")
 
