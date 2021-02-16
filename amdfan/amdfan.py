@@ -16,6 +16,7 @@ from rich.prompt import Prompt
 from rich.table import Table
 from rich.live import Live
 from rich.logging import RichHandler
+
 install()  # install traceback formatter
 
 CONFIG_LOCATIONS = [
@@ -23,7 +24,7 @@ CONFIG_LOCATIONS = [
     "/home/j/amdgpu-fan.yml",  # remove later
 ]
 
-DEBUG = bool(os.environ.get('DEBUG', False))
+DEBUG = bool(os.environ.get("DEBUG", False))
 
 ROOT_DIR = "/sys/class/drm"
 HWMON_DIR = "device/hwmon"
@@ -59,10 +60,7 @@ class Card:
     def _verify_card(self):
         for endpoint in self.AMD_FIELDS:
             if endpoint not in self._endpoints:
-                LOGGER.info(
-                        "skipping card: %s missing endpoint %s",
-                        self._id, endpoint
-                        )
+                LOGGER.info("skipping card: %s missing endpoint %s", self._id, endpoint)
                 raise FileNotFoundError
 
     def _load_endpoints(self):
@@ -82,9 +80,7 @@ class Card:
             with open(self._endpoints[endpoint], "w") as endpoint_file:
                 return endpoint_file.write(str(data))
         except PermissionError:
-            LOGGER.error(
-                    "Failed writing to devfs file, are you running as root?"
-                    )
+            LOGGER.error("Failed writing to devfs file, are you running as root?")
             sys.exit(1)
 
     @property
@@ -247,7 +243,7 @@ class Curve:  # pylint: disable=too-few-public-methods
                         configuration error ?"
             )
         if np.min(self.speeds) <= 3:
-            raise ValueError('Lowest speed value to be set to 4')  # Driver BUG
+            raise ValueError("Lowest speed value to be set to 4")  # Driver BUG
 
     def get_speed(self, temp):
         """
@@ -267,20 +263,20 @@ def load_config(path):
 
 @click.command()
 @click.option(
-        '--daemon',
-        is_flag=True,
-        default=False,
-        help='Run as daemon applying the fan curve')
+    "--daemon", is_flag=True, default=False, help="Run as daemon applying the fan curve"
+)
 @click.option(
-        '--monitor',
-        is_flag=True,
-        default=False,
-        help='Run as a monitor showing temp and fan speed')
+    "--monitor",
+    is_flag=True,
+    default=False,
+    help="Run as a monitor showing temp and fan speed",
+)
 @click.option(
-        '--manual',
-        is_flag=True,
-        default=False,
-        help='Manually set the fan speed value of a card')
+    "--manual",
+    is_flag=True,
+    default=False,
+    help="Manually set the fan speed value of a card",
+)
 def cli(daemon, monitor, manual):
     if daemon:
         run_as_daemon()
@@ -327,9 +323,7 @@ speed_matrix:
             break
 
     if config is None:
-        LOGGER.info(
-                "No config found, creating one in %s", CONFIG_LOCATIONS[-1]
-                )
+        LOGGER.info("No config found, creating one in %s", CONFIG_LOCATIONS[-1])
         with open(CONFIG_LOCATIONS[-1], "w") as config_file:
             config_file.write(default_fan_config)
             config_file.flush()
@@ -364,9 +358,7 @@ def set_fan_speed():
     scanner = Scanner()
     card_to_set = Prompt.ask("Which card?", choices=scanner.cards.keys())
     while True:
-        input_fan_speed = Prompt.ask(
-                "Fan speed, [1..100]% or 'auto'", default="auto"
-                )
+        input_fan_speed = Prompt.ask("Fan speed, [1..100]% or 'auto'", default="auto")
 
         if input_fan_speed.isdigit():
             if int(input_fan_speed) >= 1 and int(input_fan_speed) <= 100:
@@ -386,5 +378,5 @@ def set_fan_speed():
         c.print(selected_card.set_fan_speed(int(input_fan_speed)))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()  # pylint: disable=no-value-for-parameter
