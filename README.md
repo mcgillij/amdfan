@@ -1,7 +1,36 @@
 # AmdFan
 
-Is a fork of amdgpu-fan, with updates and using the correct settings for 'auto' / system controlled speeds.
+Is a fork of amdgpu-fan, with security updates and added functionality.
 
+## Why fork?
+
+* alternatives abandoned
+* lacking required features
+* security fixes not addressed
+* basic functionality not working 
+
+### Amdgpu_fan abandoned
+
+As of a couple years ago, and isn’t applying any security fixes to their project or improvements. There were also some bugs that bothered me with the project when I tried to get it up and running.
+Features missing
+
+There are a number of features that I wanted, but weren’t available.
+
+* Thresholds allow temperature range before changing fan speed
+* Frequency setting to allow better control
+* Monitoring to be able to see real-time fan speeds and temperature 
+
+### Security Fixes
+
+There are some un-addressed pull requests for some recent YAML vulnerabilities that are still present in the old amdgpu_fan project, that I’ve addressed in this fork.
+
+### Basic functionality
+
+Setting the card to system managed using the amdgpu_fan pegs your GPU fan at 100%, instead of allowing the system to manage the fan settings. I fixed that bug as well in this release.
+
+These are all addressed in Amdfan, and as long as I’ve still got some AMD cards I intend to at least maintain this for myself. And anyone’s able to help out since this is open source. I would have liked to just contribute these fixes to the main project, but it’s now inactive.
+
+# Documentation
 ## Usage
 
 ``` bash
@@ -22,7 +51,7 @@ Amdfan is also runnable as a systemd service, with the provided ```amdfan.servic
 
 You can use Amdfan to monitor your AMD video cards using the ```--monitor``` flag.
 
-![screenshot](/images/screenshot.png)
+![screenshot](https://raw.githubusercontent.com/mcgillij/amdfan/main/images/screenshot.png)
 
 ## Manual
 
