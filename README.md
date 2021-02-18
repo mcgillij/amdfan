@@ -1,4 +1,5 @@
 # AmdFan
+![Python package](https://github.com/mcgillij/amdfan/workflows/Python%20package/badge.svg)
 
 Is a fork of amdgpu-fan, with security updates and added functionality.
 
