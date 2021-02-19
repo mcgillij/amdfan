@@ -29,6 +29,46 @@ ROOT_DIR = "/sys/class/drm"
 HWMON_DIR = "device/hwmon"
 
 LOGGER = logging.getLogger("rich")
+DEFAULT_FAN_CONFIG = """#Fan Control Matrix.
+# [<Temp in C>,<Fanspeed in %>]
+speed_matrix:
+- [4, 4]
+- [30, 33]
+- [45, 50]
+- [60, 66]
+- [65, 69]
+- [70, 75]
+- [75, 89]
+- [80, 100]
+
+# Current Min supported value is 4 due to driver bug
+#
+# Optional configuration options
+#
+# Allows for some leeway +/- temp, as to not constantly change fan speed
+# threshold: 4
+#
+# Frequency will chance how often we probe for the temp
+# frequency: 5
+#
+# While frequency and threshold are optional, I highly recommend finding
+# settings that work for you. I've included the defaults I use above.
+#
+# cards:
+# can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
+# - card0
+"""
+
+SYSTEMD_SERVICE = """[Unit]
+Description=amdfan controller
+
+[Service]
+ExecStart=/usr/bin/amdfan --daemon
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+"""
 
 logging.basicConfig(
     level=logging.DEBUG if DEBUG else logging.INFO,
@@ -276,45 +316,34 @@ def load_config(path):
     default=False,
     help="Manually set the fan speed value of a card",
 )
-def cli(daemon, monitor, manual):
+@click.option(
+    "--configuration",
+    is_flag=True,
+    default=False,
+    help="Prints out the default configuration for you to use"
+)
+@click.option(
+    "--service",
+    is_flag=True,
+    default=False,
+    help="Prints out the amdfan.service file to use with systemd"
+)
+def cli(daemon, monitor, manual, configuration, service):
     if daemon:
         run_as_daemon()
     elif monitor:
         monitor_cards()
     elif manual:
         set_fan_speed()
+    elif configuration:
+        print(DEFAULT_FAN_CONFIG)
+    elif service:
+        print(SYSTEMD_SERVICE)
     else:
         c.print("Try: --help to see the options")
 
 
 def run_as_daemon():
-
-    default_fan_config = """#Fan Control Matrix.
-# [<Temp in C>,<Fanspeed in %>]
-speed_matrix:
-- [4, 4]
-- [30, 33]
-- [45, 50]
-- [60, 66]
-- [65, 69]
-- [70, 75]
-- [75, 89]
-- [80, 100]
-
-# Current Min supported value is 4 due to driver bug
-#
-# Optional configuration options
-#
-# Allows for some leeway +/- temp, as to not constantly change fan speed
-# threshold: 2
-#
-# Frequency will chance how often we probe for the temp
-# frequency: 5
-#
-# cards:
-# can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
-# - card0
-"""
     config = None
     for location in CONFIG_LOCATIONS:
         if os.path.isfile(location):
@@ -324,7 +353,7 @@ speed_matrix:
     if config is None:
         LOGGER.info("No config found, creating one in %s", CONFIG_LOCATIONS[-1])
         with open(CONFIG_LOCATIONS[-1], "w") as config_file:
-            config_file.write(default_fan_config)
+            config_file.write(DEFAULT_FAN_CONFIG)
             config_file.flush()
 
         config = load_config(CONFIG_LOCATIONS[-1])
