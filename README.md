@@ -110,8 +110,14 @@ speed_matrix:
 To run the service, if you installed amdfan using the AUR package, you can run the following commands to **start/enable** the service.
 
 ``` bash
-sudo ystemctl start amdfan
+sudo systemctl start amdfan
 sudo systemctl enable amdfan
+```
+
+After you've started it, you may want to edit the settings found in `/etc/amdfan.yml`. Once your happy with those, you can restart amdfan with the following command.
+
+``` bash
+sudo systemctl restart amdfan
 ```
 
 ## Checking the status
