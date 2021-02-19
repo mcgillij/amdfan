@@ -14,6 +14,12 @@ class TestCli(unittest.TestCase):
         help_param = "--help"
         result = runner.invoke(cli, help_param)
         assert result.exit_code == 0
+        config_param = "--configuration"
+        result = runner.invoke(cli, config_param)
+        assert result.exit_code == 0
+        service_param = "--service"
+        result = runner.invoke(cli, service_param)
+        assert result.exit_code == 0
         manual_param = "--manual"
         result = runner.invoke(cli, manual_param, input='\n'.join(['card0', "25"]))
         assert result.exception

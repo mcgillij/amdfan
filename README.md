@@ -38,10 +38,12 @@ These are all addressed in Amdfan, and as long as I’ve still got some AMD card
 Usage: amdfan.py [OPTIONS]
 
 Options:
-  --daemon   Run as daemon applying the fan curve
-  --monitor  Run as a monitor showing temp and fan speed
-  --manual   Manually set the fan speed value of a card
-  --help     Show this message and exit.
+  --daemon         Run as daemon applying the fan curve
+  --monitor        Run as a monitor showing temp and fan speed
+  --manual         Manually set the fan speed value of a card
+  --configuration  Prints out the default configuration for you to use
+  --service        Prints out the amdfan.service file to use with systemd
+  --help           Show this message and exit.
 ```
 
 ## Daemon
@@ -56,7 +58,18 @@ You can use Amdfan to monitor your AMD video cards using the ```--monitor``` fla
 
 ## Manual
 
-Alternatively if you don't want to set a fan curve, you can just apply a fan setting manually. Also allows you to revert the fan control to the systems default behavior by using the "auto" parameter.
+Alternatively if you don't want to set a fan curve, you can just apply a fan setting manually. 
+Also allows you to revert the fan control to the systems default behavior by using the "auto" parameter.
+![screenshot](https://raw.githubusercontent.com/mcgillij/amdfan/main/images/manual.png)
+
+## Configuration
+
+This will dump out the default configuration that would get generated for `/etc/amdfan.yml` when you first run it as a service. This allows you to configure the settings prior to running it as a daemon if you wish.
+
+## Service
+
+This is just a convenience method for dumping out the `amdfan.service` that would get installed if you used a package manager to install amdfan. Useful if you installed the module via `pip`, `pipenv` or `poetry` vs using the package manager version.
+
 
 
 ## Note
@@ -90,6 +103,22 @@ speed_matrix:
 # cards:
 # can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
 # - card0
+```
+
+## Running the systemd service
+
+To run the service, if you installed amdfan using the AUR package, you can run the following commands to **start/enable** the service.
+
+``` bash
+sudo ystemctl start amdfan
+sudo systemctl enable amdfan
+```
+
+## Checking the status
+You can check the systemd service status with the following command:
+
+``` bash
+systemctl status amdfan
 ```
 
 ## Building Python package
