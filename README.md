@@ -56,7 +56,7 @@ You can use Amdfan to monitor your AMD video cards using the ```--monitor``` fla
 
 ## Manual
 
-Alternatively if you don't want to set a fan curve, you can just apply a fan setting manually.
+Alternatively if you don't want to set a fan curve, you can just apply a fan setting manually. Also allows you to revert the fan control to the systems default behavior by using the "auto" parameter.
 
 
 ## Note

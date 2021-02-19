@@ -3,7 +3,7 @@
 
 pkgname=amdfan
 pkgdesc="Python daemon for controlling the fans on amdgpu cards"
-pkgver=0.1.0
+pkgver=0.1.5
 pkgrel=1
 arch=('any')
 license=('GPL2')
