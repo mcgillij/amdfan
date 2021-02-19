@@ -46,10 +46,13 @@ speed_matrix:
 # Optional configuration options
 #
 # Allows for some leeway +/- temp, as to not constantly change fan speed
-# threshold: 2
+# threshold: 4
 #
 # Frequency will chance how often we probe for the temp
 # frequency: 5
+#
+# While frequency and threshold are optional, I highly recommend finding
+# settings that work for you. I've included the defaults I use above.
 #
 # cards:
 # can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
