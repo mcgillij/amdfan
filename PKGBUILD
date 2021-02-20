@@ -1,4 +1,4 @@
-# Maintainer: Jason McGillivray <`echo 2f27c627c3b3f7cb676944bbc9cb792ff991dd6a== | base64 -d`>
+# Maintainer: Jason McGillivray < mcgillivray dot jason at gmail dot com>
 
 
 pkgname=amdfan
@@ -10,9 +10,8 @@ license=('GPL2')
 depends=('python' 'python-yaml' 'python-numpy' 'python-rich' 'python-click')
 makedepends=('python-setuptools')
 url="https://github.com/mcgillij/amdfan"
-source=("file:///home/j/gits/amdfan/dist/${pkgname}-${pkgver}.tar.gz")
-#source=("https://github.com/mcgillij/amdfan/archive/${pkgver}.tar.gz")
-md5sums=('SKIP')
+source=("https://github.com/mcgillij/amdfan/releases/download/0.1.6/amdfan-0.1.6.tar.gz")
+md5sums=('c783ff0dbc5cd144dca48b6bf3b66fdd')
 
 build() {
   cd "$srcdir/$pkgname-$pkgver"
