@@ -66,19 +66,10 @@ Also allows you to revert the fan control to the systems default behavior by usi
 
 This will dump out the default configuration that would get generated for `/etc/amdfan.yml` when you first run it as a service. This allows you to configure the settings prior to running it as a daemon if you wish.
 
-## Service
+Running `amdfan --configuration` will output the following block to STDOUT.
 
-This is just a convenience method for dumping out the `amdfan.service` that would get installed if you used a package manager to install amdfan. Useful if you installed the module via `pip`, `pipenv` or `poetry` vs using the package manager version.
-
-
-
-## Note
-
-You will need to ```sudo``` to apply any changes to the fan speeds, but you can monitor them with regular user permissions.
-
-# Config File example
-
-``` yaml
+``` bash
+#Fan Control Matrix.
 # [<Temp in C>,<Fanspeed in %>]
 speed_matrix:
 - [4, 4]
@@ -95,19 +86,52 @@ speed_matrix:
 # Optional configuration options
 #
 # Allows for some leeway +/- temp, as to not constantly change fan speed
-# threshold: 2
+# threshold: 4
 #
 # Frequency will change how often we probe for the temp
 # frequency: 5
+#
+# While frequency and threshold are optional, I highly recommend finding
+# settings that work for you. I've included the defaults I use above.
 #
 # cards:
 # can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
 # - card0
 ```
+You can use this to generate your configuration by doing ``amdfan --configuration > amdfan.yml``, you can then modify the settings and place it in ``/etc/amdfan.yml`` for when you would like to run it as a service.
 
-## Running the systemd service
+## Service
 
-To run the service, if you installed amdfan using the AUR package, you can run the following commands to **start/enable** the service.
+This is just a convenience method for dumping out the `amdfan.service` that would get installed if you used a package manager to install amdfan. Useful if you installed the module via `pip`, `pipenv` or `poetry`.
+
+Running `amdfan --service` will output the following block to STDOUT.
+
+``` bash
+[Unit]
+Description=amdfan controller
+
+[Service]
+ExecStart=/usr/bin/amdfan --daemon
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+# Note
+
+You will need to ```sudo``` to apply any changes to the fan speeds, but you can monitor them with regular user permissions.
+
+## Installing the systemd service
+If you installed via the AUR, the service is already installed, and you just need to *start/enable* it. If you installed via pip/pipenv or poetry, you can generate your systemd service file with the following command.
+
+``` bash
+amdfan --service > amdfan.service && sudo mv amdfan.service /usr/lib/systemd/system/
+```
+
+## Starting the systemd service
+
+To run the service, you can run the following commands to **start/enable** the service.
 
 ``` bash
 sudo systemctl start amdfan
@@ -127,10 +151,12 @@ You can check the systemd service status with the following command:
 systemctl status amdfan
 ```
 
-## Building Python package
+# Building Python package
 Requires Poetry to be installed
 
-``` bash 
+``` bash
+git clone git@github.com:mcgillij/amdfan.git
+cd amdfan/
 poetry build
 ```
 
@@ -141,4 +167,10 @@ Building the Arch package assumes you already have a chroot env setup to build p
 ```bash
 poetry build
 makechrootpkg -c -r $HOME/$CHROOT
+```
+
+## Installing the Arch package
+
+``` bash
+sudo pacman -U --asdeps amdfan-0.1.6-1-any.pkg.tar.zst
 ```
