@@ -120,7 +120,28 @@ WantedBy=multi-user.target
 
 # Note
 
-You will need to ```sudo``` to apply any changes to the fan speeds, but you can monitor them with regular user permissions.
+Monitoring fan speeds and temperatures can run with regular user permissions.
+`root` permissions are required for changing the settings / running as a daemon.
+
+# Recommended settings
+
+Below is the settings that I use on my machines to control the fan curve without too much fuss, but you should find a frequency and threshold setting that works for your workloads.
+
+`/etc/amdfan.yml`
+``` bash
+speed_matrix:
+- [4, 4]
+- [30, 33]
+- [45, 50]
+- [60, 66]
+- [65, 69]
+- [70, 75]
+- [75, 89]
+- [80, 100]
+
+threshold: 4
+frequency: 5
+```
 
 ## Installing the systemd service
 If you installed via the AUR, the service is already installed, and you just need to *start/enable* it. If you installed via pip/pipenv or poetry, you can generate your systemd service file with the following command.
@@ -151,26 +172,37 @@ You can check the systemd service status with the following command:
 systemctl status amdfan
 ```
 
-# Building Python package
-Requires Poetry to be installed
 
-``` bash
-git clone git@github.com:mcgillij/amdfan.git
-cd amdfan/
-poetry build
-```
-
-## Building Arch package
+## Building Arch AUR package
 
 Building the Arch package assumes you already have a chroot env setup to build packages.
 
 ```bash
-poetry build
+git clone https://aur.archlinux.org/amdfan.git
+cd amdfan/
 makechrootpkg -c -r $HOME/$CHROOT
 ```
 
 ## Installing the Arch package
 
 ``` bash
-sudo pacman -U --asdeps amdfan-0.1.6-1-any.pkg.tar.zst
+sudo pacman -U --asdeps amdfan-*-any.pkg.tar.zst
+```
+
+# Installing from PyPi
+You can also install amdfan from pypi using something like poetry.
+
+``` bash
+poetry init
+poetry add amdfan
+poetry run amdfan --help
+```
+
+# Building Python package
+Requires [poetry](https://python-poetry.org/) to be installed
+
+``` bash
+git clone git@github.com:mcgillij/amdfan.git
+cd amdfan/
+poetry build
 ```
