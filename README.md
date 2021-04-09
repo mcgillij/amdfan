@@ -1,6 +1,6 @@
 # AmdFan
 ![Python package](https://github.com/mcgillij/amdfan/workflows/Python%20package/badge.svg)
-[![Downloads](https://static.pepy.tech/personalized-badge/amdfan?period=month&units=international_system&left_color=blue&right_color=green&left_text=PyPi%20Downloads)](https://pepy.tech/project/amdfan)
+[![Downloads](https://static.pepy.tech/personalized-badge/amdfan?period=total&units=international_system&left_color=blue&right_color=green&left_text=PyPi%20Downloads)](https://pepy.tech/project/amdfan)
 
 Is a fork of amdgpu-fan, with security updates and added functionality.
 
@@ -9,7 +9,7 @@ Is a fork of amdgpu-fan, with security updates and added functionality.
 * alternatives abandoned
 * lacking required features
 * security fixes not addressed
-* basic functionality not working 
+* basic functionality not working
 
 ### Amdgpu_fan abandoned
 
@@ -20,7 +20,7 @@ There are a number of features that I wanted, but weren’t available.
 
 * Thresholds allow temperature range before changing fan speed
 * Frequency setting to allow better control
-* Monitoring to be able to see real-time fan speeds and temperature 
+* Monitoring to be able to see real-time fan speeds and temperature
 
 ### Security Fixes
 
