@@ -1,6 +1,6 @@
 import unittest
 
-from src.amdfan.amdfan import Curve
+from amdfan.amdfan import Curve
 
 
 class TestCurve(unittest.TestCase):
