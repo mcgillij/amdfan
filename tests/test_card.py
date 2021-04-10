@@ -1,6 +1,6 @@
 import unittest
 
-from amdfan.amdfan import Card
+from src.amdfan.amdfan import Card
 
 
 pwm_max = 250

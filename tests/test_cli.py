@@ -1,7 +1,7 @@
 import unittest
 
 from click.testing import CliRunner
-from amdfan.amdfan import cli
+from src.amdfan.amdfan import cli
 
 
 class TestCli(unittest.TestCase):
