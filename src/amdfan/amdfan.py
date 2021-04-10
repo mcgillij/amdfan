@@ -320,13 +320,13 @@ def load_config(path):
     "--configuration",
     is_flag=True,
     default=False,
-    help="Prints out the default configuration for you to use"
+    help="Prints out the default configuration for you to use",
 )
 @click.option(
     "--service",
     is_flag=True,
     default=False,
-    help="Prints out the amdfan.service file to use with systemd"
+    help="Prints out the amdfan.service file to use with systemd",
 )
 def cli(daemon, monitor, manual, configuration, service):
     if daemon:
