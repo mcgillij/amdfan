@@ -10,8 +10,7 @@ license=('GPL2')
 depends=('python' 'python-yaml' 'python-numpy' 'python-rich' 'python-click')
 makedepends=('python-setuptools')
 url="https://github.com/mcgillij/amdfan"
-source=("amdfan-0.1.11.tar.gz")
-#source=("https://github.com/mcgillij/amdfan/releases/download/0.1.11/amdfan-0.1.11.tar.gz")
+source=("https://github.com/mcgillij/amdfan/releases/download/0.1.11/amdfan-0.1.11.tar.gz")
 md5sums=('6d0dde6f20e4b24964885a47d30f3059')
 
 build() {
