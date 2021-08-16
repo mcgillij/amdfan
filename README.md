@@ -3,6 +3,7 @@
 [![Downloads](https://static.pepy.tech/personalized-badge/amdfan?period=total&units=international_system&left_color=blue&right_color=green&left_text=PyPi%20Downloads)](https://pepy.tech/project/amdfan)
 
 Is a fork of amdgpu-fan, with security updates and added functionality.
+This is intended for stand-alone GPU's and not integrated APU's.
 
 ## Why fork?
 
