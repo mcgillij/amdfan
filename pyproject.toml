@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "amdfan"
-version = "0.1.11"
+version = "0.1.12"
 description = "Fan monitor and controller for AMD gpus in Linux"
 authors = ["mcgillij <mcgillivray.jason@gmail.com>"]
 license = "GPL-2.0-only"
