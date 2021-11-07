@@ -6,30 +6,32 @@ import os
 import re
 import sys
 import time
+from typing import List, Dict, Callable
 import yaml
 import numpy as np
 import click
 
-from rich import console
+from rich.console import Console
 from rich.traceback import install
 from rich.prompt import Prompt
 from rich.table import Table
 from rich.live import Live
 from rich.logging import RichHandler
 
+
 install()  # install traceback formatter
 
-CONFIG_LOCATIONS = [
+CONFIG_LOCATIONS: List[str] = [
     "/etc/amdfan.yml",
 ]
 
-DEBUG = bool(os.environ.get("DEBUG", False))
+DEBUG: bool = bool(os.environ.get("DEBUG", False))
 
-ROOT_DIR = "/sys/class/drm"
-HWMON_DIR = "device/hwmon"
+ROOT_DIR: str = "/sys/class/drm"
+HWMON_DIR: str = "device/hwmon"
 
-LOGGER = logging.getLogger("rich")
-DEFAULT_FAN_CONFIG = """#Fan Control Matrix.
+LOGGER = logging.getLogger("rich")  # type: ignore
+DEFAULT_FAN_CONFIG: str = """#Fan Control Matrix.
 # [<Temp in C>,<Fanspeed in %>]
 speed_matrix:
 - [4, 4]
@@ -59,7 +61,7 @@ speed_matrix:
 # - card0
 """
 
-SYSTEMD_SERVICE = """[Unit]
+SYSTEMD_SERVICE: str = """[Unit]
 Description=amdfan controller
 
 [Service]
@@ -77,7 +79,7 @@ logging.basicConfig(
     handlers=[RichHandler(rich_tracebacks=True)],
 )
 
-c = console.Console(style="green on black")
+c: Console = Console(style="green on black")
 
 
 class Card:
@@ -85,10 +87,16 @@ class Card:
     This class is used to map to each card that supports HWMON
     """
 
-    HWMON_REGEX = r"^hwmon\d$"
-    AMD_FIELDS = ["temp1_input", "pwm1_max", "pwm1_min", "pwm1_enable", "pwm1"]
+    HWMON_REGEX: str = r"^hwmon\d$"
+    AMD_FIELDS: List[str] = [
+        "temp1_input",
+        "pwm1_max",
+        "pwm1_min",
+        "pwm1_enable",
+        "pwm1",
+    ]
 
-    def __init__(self, card_id):
+    def __init__(self, card_id: str) -> None:
         self._id = card_id
 
         for node in os.listdir(os.path.join(ROOT_DIR, self._id, HWMON_DIR)):
@@ -96,13 +104,13 @@ class Card:
                 self._monitor = node
         self._endpoints = self._load_endpoints()
 
-    def _verify_card(self):
+    def _verify_card(self) -> None:
         for endpoint in self.AMD_FIELDS:
             if endpoint not in self._endpoints:
                 LOGGER.info("skipping card: %s missing endpoint %s", self._id, endpoint)
                 raise FileNotFoundError
 
-    def _load_endpoints(self):
+    def _load_endpoints(self) -> Dict:
         _endpoints = {}
         _dir = os.path.join(ROOT_DIR, self._id, HWMON_DIR, self._monitor)
         for endpoint in os.listdir(_dir):
@@ -110,11 +118,11 @@ class Card:
                 _endpoints[endpoint] = os.path.join(_dir, endpoint)
         return _endpoints
 
-    def read_endpoint(self, endpoint):
+    def read_endpoint(self, endpoint: str) -> str:
         with open(self._endpoints[endpoint], "r") as endpoint_file:
             return endpoint_file.read()
 
-    def write_endpoint(self, endpoint, data):
+    def write_endpoint(self, endpoint: str, data: int) -> int:
         try:
             with open(self._endpoints[endpoint], "w") as endpoint_file:
                 return endpoint_file.write(str(data))
@@ -123,25 +131,25 @@ class Card:
             sys.exit(1)
 
     @property
-    def fan_speed(self):
+    def fan_speed(self) -> int:
         try:
             return int(self.read_endpoint("fan1_input"))
         except KeyError:  # better to return no speed then explode
             return 0
 
     @property
-    def gpu_temp(self):
+    def gpu_temp(self) -> float:
         return float(self.read_endpoint("temp1_input")) / 1000
 
     @property
-    def fan_max(self):
+    def fan_max(self) -> int:
         return int(self.read_endpoint("pwm1_max"))
 
     @property
-    def fan_min(self):
+    def fan_min(self) -> int:
         return int(self.read_endpoint("pwm1_min"))
 
-    def set_system_controlled_fan(self, state):
+    def set_system_controlled_fan(self, state: bool) -> None:
 
         system_controlled_fan = 2
         manual_control = 1
@@ -150,23 +158,23 @@ class Card:
             "pwm1_enable", system_controlled_fan if state else manual_control
         )
 
-    def set_fan_speed(self, speed):
+    def set_fan_speed(self, speed: int) -> int:
         if speed >= 100:
             speed = self.fan_max
         elif speed <= 0:
             speed = self.fan_min
         else:
-            speed = self.fan_max / 100 * speed
+            speed = int(self.fan_max / 100 * speed)
         self.set_system_controlled_fan(False)
-        return self.write_endpoint("pwm1", int(speed))
+        return self.write_endpoint("pwm1", speed)
 
 
 class Scanner:  # pylint: disable=too-few-public-methods
     """ Used to scan the available cards to see if they are usable """
 
-    CARD_REGEX = r"^card\d$"
+    CARD_REGEX: str = r"^card\d$"
 
-    def __init__(self, cards=None):
+    def __init__(self, cards=None) -> None:
         self.cards = self._get_cards(cards)
 
     def _get_cards(self, cards_to_scan):
@@ -193,7 +201,7 @@ class Scanner:  # pylint: disable=too-few-public-methods
 class FanController:  # pylint: disable=too-few-public-methods
     """ Used to apply the curve at regular intervals """
 
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         self._scanner = Scanner(config.get("cards"))
         if len(self._scanner.cards) < 1:
             LOGGER.error("no compatible cards found, exiting")
@@ -204,7 +212,7 @@ class FanController:  # pylint: disable=too-few-public-methods
         self._frequency = config.get("frequency", 5)
         self._last_temp = 0
 
-    def main(self):
+    def main(self) -> None:
         LOGGER.info("Starting amdfan")
         while True:
             for name, card in self._scanner.cards.items():
@@ -256,7 +264,7 @@ class Curve:  # pylint: disable=too-few-public-methods
     creates a fan curve based on user defined points
     """
 
-    def __init__(self, points: list):
+    def __init__(self, points: list) -> None:
         self.points = np.array(points)
         self.temps = self.points[:, 0]
         self.speeds = self.points[:, 1]
@@ -284,7 +292,7 @@ class Curve:  # pylint: disable=too-few-public-methods
         if np.min(self.speeds) <= 3:
             raise ValueError("Lowest speed value to be set to 4")  # Driver BUG
 
-    def get_speed(self, temp):
+    def get_speed(self, temp: int) -> int:
         """
         returns a speed for a given temperature
         :param temp: int
@@ -294,7 +302,7 @@ class Curve:  # pylint: disable=too-few-public-methods
         return np.interp(x=temp, xp=self.temps, fp=self.speeds)
 
 
-def load_config(path):
+def load_config(path) -> Callable:
     LOGGER.debug("loading config from %s", path)
     with open(path) as config_file:
         return yaml.safe_load(config_file)
@@ -328,7 +336,9 @@ def load_config(path):
     default=False,
     help="Prints out the amdfan.service file to use with systemd",
 )
-def cli(daemon, monitor, manual, configuration, service):
+def cli(
+    daemon: bool, monitor: bool, manual: bool, configuration: bool, service: bool
+) -> None:
     if daemon:
         run_as_daemon()
     elif monitor:
@@ -343,7 +353,7 @@ def cli(daemon, monitor, manual, configuration, service):
         c.print("Try: --help to see the options")
 
 
-def run_as_daemon():
+def run_as_daemon() -> None:
     config = None
     for location in CONFIG_LOCATIONS:
         if os.path.isfile(location):
@@ -361,19 +371,17 @@ def run_as_daemon():
     FanController(config).main()
 
 
-def show_table(cards):
+def show_table(cards: Dict) -> Table:
     table = Table(title="amdgpu")
     table.add_column("Card")
     table.add_column("fan_speed (RPM)")
     table.add_column("gpu_temp ℃")
-    for card in cards:
-        fan_speed = cards.get(card).fan_speed
-        gpu_temp = cards.get(card).gpu_temp
-        table.add_row(f"{card}", f"{fan_speed}", f"{gpu_temp}")
+    for card, card_value in cards.items():
+        table.add_row(f"{card}", f"{card_value.fan_speed}", f"{card_value.gpu_temp}")
     return table
 
 
-def monitor_cards():
+def monitor_cards() -> None:
     c.print("AMD Fan Control - ctrl-c to quit")
     scanner = Scanner()
     with Live(refresh_per_second=4) as live:
@@ -382,7 +390,7 @@ def monitor_cards():
             live.update(show_table(scanner.cards))
 
 
-def set_fan_speed():
+def set_fan_speed() -> None:
     scanner = Scanner()
     card_to_set = Prompt.ask("Which card?", choices=scanner.cards.keys())
     while True:

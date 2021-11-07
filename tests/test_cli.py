@@ -21,6 +21,6 @@ class TestCli(unittest.TestCase):
         result = runner.invoke(cli, service_param)
         assert result.exit_code == 0
         manual_param = "--manual"
-        result = runner.invoke(cli, manual_param, input='\n'.join(['card0', "25"]))
+        result = runner.invoke(cli, manual_param, input="\n".join(["card0", "25"]))
         assert result.exception
         assert result.exit_code == 1  # should be permission denied for non-root
