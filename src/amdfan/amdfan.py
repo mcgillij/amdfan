@@ -88,7 +88,13 @@ class Card:
     """
 
     HWMON_REGEX: str = r"^hwmon\d$"
-    AMD_FIELDS: List[str] = ["temp1_input", "pwm1_max", "pwm1_min", "pwm1_enable", "pwm1"]
+    AMD_FIELDS: List[str] = [
+        "temp1_input",
+        "pwm1_max",
+        "pwm1_min",
+        "pwm1_enable",
+        "pwm1",
+    ]
 
     def __init__(self, card_id: str) -> None:
         self._id = card_id
@@ -330,7 +336,9 @@ def load_config(path) -> Callable:
     default=False,
     help="Prints out the amdfan.service file to use with systemd",
 )
-def cli(daemon: bool, monitor: bool, manual: bool, configuration: bool, service: bool) -> None:
+def cli(
+    daemon: bool, monitor: bool, manual: bool, configuration: bool, service: bool
+) -> None:
     if daemon:
         run_as_daemon()
     elif monitor:
