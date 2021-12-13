@@ -14,10 +14,10 @@ This is intended for stand-alone GPU's and not integrated APU's.
 
 ### Amdgpu_fan abandoned
 
-As of a couple years ago, and isn’t applying any security fixes to their project or improvements. There were also some bugs that bothered me with the project when I tried to get it up and running.
+As of a couple years ago, and is no longer applying any security fixes to their project or improvements. There were also some bugs that bothered me with the project when I tried to get it up and running.
 Features missing
 
-There are a number of features that I wanted, but weren’t available.
+There are a number of features that I wanted, but were not available.
 
 * Thresholds allow temperature range before changing fan speed
 * Frequency setting to allow better control
