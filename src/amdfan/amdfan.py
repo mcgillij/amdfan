@@ -134,7 +134,7 @@ class Card:
     def fan_speed(self) -> int:
         try:
             return int(self.read_endpoint("fan1_input"))
-        except KeyError:  # better to return no speed then explode
+        except (KeyError, OSError):  # better to return no speed then explode
             return 0
 
     @property
@@ -170,7 +170,7 @@ class Card:
 
 
 class Scanner:  # pylint: disable=too-few-public-methods
-    """ Used to scan the available cards to see if they are usable """
+    """Used to scan the available cards to see if they are usable"""
 
     CARD_REGEX: str = r"^card\d$"
 
@@ -199,7 +199,7 @@ class Scanner:  # pylint: disable=too-few-public-methods
 
 
 class FanController:  # pylint: disable=too-few-public-methods
-    """ Used to apply the curve at regular intervals """
+    """Used to apply the curve at regular intervals"""
 
     def __init__(self, config) -> None:
         self._scanner = Scanner(config.get("cards"))
