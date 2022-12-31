@@ -24,7 +24,7 @@ classifiers = [
 include = [ "LICENSE", ]
 
 [tool.poetry.dependencies]
-python = "^3.8 || ^3.9 || ^3.10"
+python = "^3.9 || ^3.10"
 numpy = "^1.24.1"
 pyyaml = "^6.0"
 click = "^8.1.3"

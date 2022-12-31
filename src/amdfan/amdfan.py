@@ -6,9 +6,10 @@ import os
 import re
 import sys
 import time
-from typing import List, Dict, Callable
+from typing import Any, List, Dict, Callable
 import yaml
 import numpy as np
+from numpy import ndarray
 import click
 
 from rich.console import Console
@@ -292,7 +293,7 @@ class Curve:  # pylint: disable=too-few-public-methods
         if np.min(self.speeds) <= 3:
             raise ValueError("Lowest speed value to be set to 4")  # Driver BUG
 
-    def get_speed(self, temp: int) -> int:
+    def get_speed(self, temp: int) -> ndarray[Any, Any]:
         """
         returns a speed for a given temperature
         :param temp: int

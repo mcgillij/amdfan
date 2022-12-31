@@ -11,7 +11,7 @@ depends=('python' 'python-yaml' 'python-numpy' 'python-rich' 'python-click')
 makedepends=('python-setuptools')
 url="https://github.com/mcgillij/amdfan"
 source=("https://github.com/mcgillij/amdfan/releases/download/$pkgver/amdfan-$pkgver.tar.gz")
-md5sums=('387643f8d342c6abd5c9d67d8f9d3687')
+md5sums=('cb938f4c09db0d437e3991402f429114')
 
 build() {
   cd "$srcdir/$pkgname-$pkgver"
