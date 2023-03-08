@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "amdfan"
-version = "0.1.21"
+version = "0.1.22"
 description = "Fan monitor and controller for AMD gpus in Linux"
 authors = ["mcgillij <mcgillivray.jason@gmail.com>"]
 license = "GPL-2.0-only"
@@ -32,12 +32,12 @@ rich = "^13.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
-pylint = "^2.15.9"
-flake8 = "^6.0.0"
-black = "^22.12.0"
-pytest = "^7.2.0"
-mypy = "^0.991"
-types-pyyaml = "^6.0.12.2"
+pylint = "*"
+flake8 = "*"
+black = "*"
+pytest = "*"
+mypy = "*"
+types-pyyaml = "*"
 
 [tool.poetry.scripts]
 amdfan = 'amdfan.amdfan:cli'
