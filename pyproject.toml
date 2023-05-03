@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "amdfan"
-version = "0.1.23"
+version = "0.1.24"
 description = "Fan monitor and controller for AMD gpus in Linux"
 authors = ["mcgillij <mcgillivray.jason@gmail.com>"]
 license = "GPL-2.0-only"
@@ -20,8 +20,6 @@ classifiers = [
     "Topic :: System :: Monitoring",
     "Topic :: Utilities",
 ]
-
-include = [ "LICENSE", ]
 
 [tool.poetry.dependencies]
 python = "^3.9 || ^3.10 || ^3.11"
