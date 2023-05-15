@@ -1,9 +1,12 @@
 [Unit]
 Description=amdfan controller
+After=multi-user.target
+Requires=multi-user.target
 
 [Service]
 ExecStart=/usr/bin/amdfan --daemon
 Restart=always
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=final.target
+
