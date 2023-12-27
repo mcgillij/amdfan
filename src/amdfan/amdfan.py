@@ -88,7 +88,7 @@ class Card:
     This class is used to map to each card that supports HWMON
     """
 
-    HWMON_REGEX: str = r"^hwmon\d$"
+    HWMON_REGEX: str = r"^hwmon\d+$"
     AMD_FIELDS: List[str] = [
         "temp1_input",
         "pwm1_max",
