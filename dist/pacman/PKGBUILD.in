@@ -22,6 +22,6 @@ build() {
 package() {
   cd "$srcdir/$pkgname-$pkgver"
   python -m installer --destdir="$pkgdir" dist/*.whl
-  mkdir -p "$pkgdir/usr/lib/systemd/system"
-  install -Dm644 src/amdfan/amdfan.service "$pkgdir/usr/lib/systemd/system/"
+  mkdir -p "$pkgdir/@libdir@/systemd/system"
+  install -Dm644 amdfan/packaging/pacman/amdfan.service "$pkgdir/@libdir@/systemd/system/"
 }
