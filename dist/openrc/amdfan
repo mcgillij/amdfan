@@ -1,0 +1,8 @@
+#!/sbin/openrc-run
+
+description="amdfan controller"
+command="/usr/bin/amdfan"
+command_args="--daemon"
+command_background=true
+pidfile="/var/run/${RC_SVCNAME}.pid"
+
