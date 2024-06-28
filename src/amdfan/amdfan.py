@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import sys
+import atexit
 import time
 from typing import Any, List, Dict, Callable
 import yaml
@@ -30,6 +31,7 @@ DEBUG: bool = bool(os.environ.get("DEBUG", False))
 
 ROOT_DIR: str = "/sys/class/drm"
 HWMON_DIR: str = "device/hwmon"
+PIDFILE_DIR: str = "/var/run"
 
 LOGGER = logging.getLogger("rich")  # type: ignore
 DEFAULT_FAN_CONFIG: str = """#Fan Control Matrix.
@@ -354,7 +356,21 @@ def cli(
         c.print("Try: --help to see the options")
 
 
+def create_pidfile(pidfile: str) -> None:
+    pid = os.getpid()
+    with open(pidfile, "w") as file:
+        file.write(str(pid))
+
+    def remove_pidfile() -> None:
+        if os.path.isfile(pidfile):
+            os.remove(pidfile)
+
+    atexit.register(remove_pidfile)
+
+
 def run_as_daemon() -> None:
+    create_pidfile(os.path.join(PIDFILE_DIR, "amdfan.pid"))
+
     config = None
     for location in CONFIG_LOCATIONS:
         if os.path.isfile(location):
