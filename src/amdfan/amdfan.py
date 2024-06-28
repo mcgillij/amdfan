@@ -357,6 +357,7 @@ def cli(
 
 
 def create_pidfile(pidfile: str) -> None:
+    LOGGER.info("Creating pifile %s", pidfile)
     pid = os.getpid()
     with open(pidfile, "w") as file:
         file.write(str(pid))
@@ -366,6 +367,7 @@ def create_pidfile(pidfile: str) -> None:
             os.remove(pidfile)
 
     atexit.register(remove_pidfile)
+    LOGGER.info("Saved pidfile with running pid=%s", pid)
 
 
 def run_as_daemon() -> None:
