@@ -5,6 +5,7 @@ Requires=multi-user.target
 
 [Service]
 ExecStart=@bindir@/amdfan --daemon
+ExecReload=kill -HUP $MAINPID
 Restart=always
 
 [Install]

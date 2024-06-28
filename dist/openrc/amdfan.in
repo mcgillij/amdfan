@@ -6,3 +6,7 @@ command_args="--daemon"
 command_background=true
 pidfile="/var/run/${RC_SVCNAME}.pid"
 
+reload() {
+	start-stop-daemon --signal SIGHUP --pidfile "${pidfile}"
+}
+

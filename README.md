@@ -94,6 +94,8 @@ You can use this to generate your configuration by doing `amdfan print-default -
 `frequency` (default `5`): how often (in seconds) we wait between updates
 `cards` (required): a list of card names (from `/sys/class/drm`) which we want to control.
 
+Note! You can send a SIGHUP signal to the daemon to request a reload of the config without restarting the whole service.
+
 # Install
 
 Users: Use your package manager to install the package. It's available on Arch Linux and Gentoo. For other distributions, please request a maintainer to bring the package to your system, or read the installation notes at your own warranty.
