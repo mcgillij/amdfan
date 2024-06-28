@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import atexit
+import signal
 import time
 from typing import Any, List, Dict, Callable
 import yaml
@@ -204,7 +205,16 @@ class Scanner:  # pylint: disable=too-few-public-methods
 class FanController:  # pylint: disable=too-few-public-methods
     """Used to apply the curve at regular intervals"""
 
-    def __init__(self, config) -> None:
+    def __init__(self, config_path) -> None:
+        self.config_path = config_path
+        self.reload_config()
+        self._last_temp = 0
+
+    def reload_config(self, *_) -> None:
+        config = load_config(self.config_path)
+        self.apply(config)
+
+    def apply(self, config) -> None:
         self._scanner = Scanner(config.get("cards"))
         if len(self._scanner.cards) < 1:
             LOGGER.error("no compatible cards found, exiting")
@@ -213,7 +223,6 @@ class FanController:  # pylint: disable=too-few-public-methods
         # default to 5 if frequency not set
         self._threshold = config.get("threshold")
         self._frequency = config.get("frequency", 5)
-        self._last_temp = 0
 
     def main(self) -> None:
         LOGGER.info("Starting amdfan")
@@ -373,21 +382,21 @@ def create_pidfile(pidfile: str) -> None:
 def run_as_daemon() -> None:
     create_pidfile(os.path.join(PIDFILE_DIR, "amdfan.pid"))
 
-    config = None
+    config_path = None
     for location in CONFIG_LOCATIONS:
         if os.path.isfile(location):
-            config = load_config(location)
+            config_path = location
             break
 
-    if config is None:
+    if config_path is None:
         LOGGER.info("No config found, creating one in %s", CONFIG_LOCATIONS[-1])
         with open(CONFIG_LOCATIONS[-1], "w") as config_file:
             config_file.write(DEFAULT_FAN_CONFIG)
             config_file.flush()
 
-        config = load_config(CONFIG_LOCATIONS[-1])
-
-    FanController(config).main()
+    controller = FanController(config_path)
+    signal.signal(signal.SIGHUP, controller.reload_config)
+    controller.main()
 
 
 def show_table(cards: Dict) -> Table:
