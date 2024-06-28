@@ -48,6 +48,8 @@ Commands:
   set            Manually override the fan speed
 ```
 
+Each subcommand supports `--help` too, to get more details.
+
 ## Controlling the fans
 
 There are two ways to control your fans with Amdfan. Note that in order to control the fans, you will likely need to run either approach as root. 
@@ -68,8 +70,9 @@ You can use Amdfan to monitor your AMD video cards using the `monitor` flag. Thi
 
 ## Configuration
 
-Running `amdfan print-default --configuration` will dump out the default configuration that would get generated for `/etc/amdfan.yml` when you first run it as a service. Commented 
+Running `amdfan print-default --configuration` will dump out the default configuration that would get generated for `/etc/amdfan.yml` when you first run it as a service. If a value is not specified, it will use a default value if possible.
 
+The following config is probably a reasonable setup:
 ``` bash
 speed_matrix:
 - [4, 4]
@@ -87,12 +90,13 @@ frequency: 5
 # cards:
 # - card0
 ```
-You can use this to generate your configuration by doing `amdfan print-default --configuration | sudo tee amdfan.yml`, which you can manually edit.
 
-`speed_matrix` (required): a list of thresholds [temperature, speed] which are interpolated to calculate the fan speed.
-`threshold` (default `0`): allows for some leeway in temperatures, as to not constantly change fan speed
-`frequency` (default `5`): how often (in seconds) we wait between updates
-`cards` (required): a list of card names (from `/sys/class/drm`) which we want to control.
+If a configuration file is not found, a default one will be generated. If you want to make any changes to the default config before running it the daemon first, run `amdfan print-default --configuration | sudo tee /etc/amdfan.yml` and do your changes from there.
+
+- `speed_matrix` (required): a list of thresholds `[temperature, speed]` which are interpolated to calculate the fan speed.
+- `threshold` (default `0`): allows for some leeway in temperatures, as to not constantly change fan speed
+- `frequency` (default `5`): how often (in seconds) we wait between updates
+- `cards` (required): a list of card names (from `/sys/class/drm`) which we want to control.
 
 Note! You can send a SIGHUP signal to the daemon to request a reload of the config without restarting the whole service.
 

@@ -35,7 +35,19 @@ amdfan print-default --configuration | sudo tee /etc/amdfan.yml
 
 
 # Executable files
-`src/amdfan` cont
+The executable files are contained within amdfan. This directory is a python module, and can either be loaded as `python -m amdgpu`. If you want to import the module, you may be interested in checking out `amdfan.commands`, which contains most of the subcommands.
+
+Otherwise, just use python-exec with something like
+
+```python
+import sys
+from amdfan.__main__ import main
+
+if __name__ == '__main__':
+    sys.exit(main())
+```
+
+
 
 # Installing from PyPi
 You can also install amdfan from pypi using something like poetry.
