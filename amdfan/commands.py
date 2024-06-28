@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """ entry point for amdfan """
 # noqa: E501
+import os
 import sys
 import time
 from typing import Dict
@@ -12,7 +13,7 @@ from rich.prompt import Prompt
 from rich.table import Table
 from rich.traceback import install
 
-from .config import LOGGER
+from .config import LOGGER, PIDFILE_DIR
 from .controller import FanController, Scanner
 from .defaults import DEFAULT_FAN_CONFIG, SERVICES
 
@@ -52,9 +53,12 @@ def cli(
     name="daemon",
     help="Run the controller",
 )
+@click.option("--notification-fd", type=int)
 # @click.option("--background", is_flag=True, default=True)
-def run_daemon():
-    FanController.start_daemon()
+def run_daemon(notification_fd):
+    FanController.start_daemon(
+        notification_fd=notification_fd, pidfile=os.path.join(PIDFILE_DIR, "amdfan.pid")
+    )
 
 
 def show_table(cards: Dict) -> Table:

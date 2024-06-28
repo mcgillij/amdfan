@@ -6,13 +6,13 @@ import re
 import signal
 import sys
 import time
-from typing import Any, Callable, Dict, List, Self
+from typing import Any, Callable, Dict, List, Optional, Self
 
 import numpy as np
 import yaml
 from numpy import ndarray
 
-from .config import CONFIG_LOCATIONS, HWMON_DIR, LOGGER, PIDFILE_DIR, ROOT_DIR
+from .config import CONFIG_LOCATIONS, HWMON_DIR, LOGGER, ROOT_DIR
 from .defaults import DEFAULT_FAN_CONFIG
 
 
@@ -28,6 +28,10 @@ def create_pidfile(pidfile: str) -> None:
 
     atexit.register(remove_pidfile)
     LOGGER.info("Saved pidfile with running pid=%s", pid)
+
+
+def report_ready(fd: int) -> None:
+    os.write(fd, b"READY=1\n")
 
 
 class Curve:  # pylint: disable=too-few-public-methods
@@ -198,10 +202,11 @@ class FanController:  # pylint: disable=too-few-public-methods
     _threshold: int
     _frequency: int
 
-    def __init__(self, config_path) -> None:
+    def __init__(self, config_path, notification_fd=None) -> None:
         self.config_path = config_path
         self.reload_config()
         self._last_temp = 0
+        self._ready_fd = notification_fd
 
     def reload_config(self, *_) -> None:
         config = load_config(self.config_path)
@@ -218,53 +223,62 @@ class FanController:  # pylint: disable=too-few-public-methods
 
     def main(self) -> None:
         LOGGER.info("Starting amdfan")
+        if self._ready_fd is not None:
+            report_ready(self._ready_fd)
+
         while True:
             for name, card in self._scanner.cards.items():
-                apply = True
-                temp = card.gpu_temp
-                speed = int(self._curve.get_speed(int(temp)))
-                if speed < 0:
-                    speed = 4  # due to driver bug
-
-                LOGGER.debug(
-                    "%s: Temp %d, \
-                            last temp: %d \
-                            target fan speed: %d, \
-                            fan speed %d, \
-                            min: %d, max: %d",
-                    name,
-                    temp,
-                    self._last_temp,
-                    speed,
-                    card.fan_speed,
-                    card.fan_min,
-                    card.fan_max,
-                )
-                if self._threshold and self._last_temp:
-
-                    LOGGER.debug("threshold and last temp, checking")
-                    low = self._last_temp - self._threshold
-                    high = self._last_temp + self._threshold
-
-                    LOGGER.debug("%d and %d and %d", low, high, temp)
-                    if int(temp) in range(int(low), int(high)):
-                        LOGGER.debug("temp in range, doing nothing")
-                        apply = False
-                    else:
-                        LOGGER.debug("temp out of range, setting")
-                        card.set_fan_speed(speed)
-                        self._last_temp = temp
-                        continue
-
-                if apply:
-                    card.set_fan_speed(speed)
-                    self._last_temp = temp
+                self.refresh_card(name, card)
 
             time.sleep(self._frequency)
 
+    def refresh_card(self, name, card):
+        apply = True
+        temp = card.gpu_temp
+        speed = int(self._curve.get_speed(int(temp)))
+        if speed < 0:
+            speed = 4  # due to driver bug
+
+        LOGGER.debug(
+            "%s: Temp %d, \
+                    last temp: %d \
+                    target fan speed: %d, \
+                    fan speed %d, \
+                    min: %d, max: %d",
+            name,
+            temp,
+            self._last_temp,
+            speed,
+            card.fan_speed,
+            card.fan_min,
+            card.fan_max,
+        )
+        if self._threshold and self._last_temp:
+
+            LOGGER.debug("threshold and last temp, checking")
+            low = self._last_temp - self._threshold
+            high = self._last_temp + self._threshold
+
+            LOGGER.debug("%d and %d and %d", low, high, temp)
+            if int(temp) in range(int(low), int(high)):
+                LOGGER.debug("temp in range, doing nothing")
+                apply = False
+            else:
+                LOGGER.debug("temp out of range, setting")
+                card.set_fan_speed(speed)
+                self._last_temp = temp
+                return
+
+        if apply:
+            card.set_fan_speed(speed)
+            self._last_temp = temp
+
     @classmethod
-    def start_daemon(cls) -> Self:
-        create_pidfile(os.path.join(PIDFILE_DIR, "amdfan.pid"))
+    def start_daemon(
+        cls, notification_fd: Optional[int], pidfile: Optional[str] = None
+    ) -> Self:
+        if pidfile:
+            create_pidfile(pidfile)
 
         config_path = None
         for location in CONFIG_LOCATIONS:
@@ -278,9 +292,10 @@ class FanController:  # pylint: disable=too-few-public-methods
                 config_file.write(DEFAULT_FAN_CONFIG)
                 config_file.flush()
 
-        controller = cls(config_path)
+        controller = cls(config_path, notification_fd=notification_fd)
         signal.signal(signal.SIGHUP, controller.reload_config)
         controller.main()
+
         return controller
 
 
