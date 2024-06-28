@@ -34,102 +34,42 @@ Setting the card to system managed using the amdgpu_fan pegs your GPU fan at 100
 These are all addressed in Amdfan, and as long as I’ve still got some AMD cards I intend to at least maintain this for myself. And anyone’s able to help out since this is open source. I would have liked to just contribute these fixes to the main project, but it’s now inactive.
 
 # Documentation
-## Usage
 
-``` bash
-Usage: amdfan.py [OPTIONS]
+```help
+Usage: amdfan [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --daemon         Run as daemon applying the fan curve
-  --monitor        Run as a monitor showing temp and fan speed
-  --manual         Manually set the fan speed value of a card
-  --configuration  Prints out the default configuration for you to use
-  --service        Prints out the amdfan.service file to use with systemd
-  --help           Show this message and exit.
+  --help  Show this message and exit.
+
+Commands:
+  daemon         Run the controller
+  monitor        View the current temperature and speed
+  print-default  Convenient defaults
+  set            Manually override the fan speed
 ```
 
-## Daemon
+## Controlling the fans
 
-Amdfan is also runnable as a systemd service, with the provided ```amdfan.service```.
+There are two ways to control your fans with Amdfan. Note that in order to control the fans, you will likely need to run either approach as root. 
+
+The recommended way is through a system service started at boot. This will control the fans based on the detected temperature at a given interval.
+
+In case you don't want to use a service, you may also control the fans manually. While this is only adviced to do when first setting up your configuration, keep in mind you can also use it to temporarily take control away from the daemon until you revert the fan speed back to `auto`.
+
+![screenshot](https://raw.githubusercontent.com/mcgillij/amdfan/main/images/manual.png)
+
 
 ## Monitor
 
-You can use Amdfan to monitor your AMD video cards using the ```--monitor``` flag.
+You can use Amdfan to monitor your AMD video cards using the `monitor` flag. This does not require root privileges, usually.
 
 ![screenshot](https://raw.githubusercontent.com/mcgillij/amdfan/main/images/screenshot.png)
 
-## Manual
-
-Alternatively if you don't want to set a fan curve, you can just apply a fan setting manually. 
-Also allows you to revert the fan control to the systems default behavior by using the "auto" parameter.
-![screenshot](https://raw.githubusercontent.com/mcgillij/amdfan/main/images/manual.png)
 
 ## Configuration
 
-This will dump out the default configuration that would get generated for `/etc/amdfan.yml` when you first run it as a service. This allows you to configure the settings prior to running it as a daemon if you wish.
+Running `amdfan print-default --configuration` will dump out the default configuration that would get generated for `/etc/amdfan.yml` when you first run it as a service. Commented 
 
-Running `amdfan --configuration` will output the following block to STDOUT.
-
-``` bash
-#Fan Control Matrix.
-# [<Temp in C>,<Fanspeed in %>]
-speed_matrix:
-- [4, 4]
-- [30, 33]
-- [45, 50]
-- [60, 66]
-- [65, 69]
-- [70, 75]
-- [75, 89]
-- [80, 100]
-
-# Current Min supported value is 4 due to driver bug
-#
-# Optional configuration options
-#
-# Allows for some leeway +/- temp, as to not constantly change fan speed
-# threshold: 4
-#
-# Frequency will change how often we probe for the temp
-# frequency: 5
-#
-# While frequency and threshold are optional, I highly recommend finding
-# settings that work for you. I've included the defaults I use above.
-#
-# cards:
-# can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
-# - card0
-```
-You can use this to generate your configuration by doing ``amdfan --configuration > amdfan.yml``, you can then modify the settings and place it in ``/etc/amdfan.yml`` for when you would like to run it as a service.
-
-## Service
-
-This is just a convenience method for dumping out the `amdfan.service` that would get installed if you used a package manager to install amdfan. Useful if you installed the module via `pip`, `pipenv` or `poetry`.
-
-Running `amdfan --service` will output the following block to STDOUT.
-
-``` bash
-[Unit]
-Description=amdfan controller
-
-[Service]
-ExecStart=/usr/bin/amdfan --daemon
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-# Note
-
-Monitoring fan speeds and temperatures can run with regular user permissions.
-`root` permissions are required for changing the settings / running as a daemon.
-
-# Recommended settings
-
-Below is the settings that I use on my machines to control the fan curve without too much fuss, but you should find a frequency and threshold setting that works for your workloads.
-
-`/etc/amdfan.yml`
 ``` bash
 speed_matrix:
 - [4, 4]
@@ -143,68 +83,20 @@ speed_matrix:
 
 threshold: 4
 frequency: 5
+
+# cards:
+# - card0
 ```
+You can use this to generate your configuration by doing `amdfan print-default --configuration | sudo tee amdfan.yml`, which you can manually edit.
 
-## Installing the systemd service
-If you installed via the AUR, the service is already installed, and you just need to *start/enable* it. If you installed via pip/pipenv or poetry, you can generate your systemd service file with the following command.
+`speed_matrix` (required): a list of thresholds [temperature, speed] which are interpolated to calculate the fan speed.
+`threshold` (default `0`): allows for some leeway in temperatures, as to not constantly change fan speed
+`frequency` (default `5`): how often (in seconds) we wait between updates
+`cards` (required): a list of card names (from `/sys/class/drm`) which we want to control.
 
-``` bash
-amdfan --service > amdfan.service && sudo mv amdfan.service /usr/lib/systemd/system/
-```
+# Install
 
-## Starting the systemd service
+Users: Use your package manager to install the package. It's available on Arch Linux and Gentoo. For other distributions, please request a maintainer to bring the package to your system, or read the installation notes at your own warranty.
 
-To run the service, you can run the following commands to **start/enable** the service.
+Maintainers: Check the [installation notes](INSTALL.md).
 
-``` bash
-sudo systemctl start amdfan
-sudo systemctl enable amdfan
-```
-
-After you've started it, you may want to edit the settings found in `/etc/amdfan.yml`. Once your happy with those, you can restart amdfan with the following command.
-
-``` bash
-sudo systemctl restart amdfan
-```
-
-## Checking the status
-You can check the systemd service status with the following command:
-
-``` bash
-systemctl status amdfan
-```
-
-
-## Building Arch AUR package
-
-Building the Arch package assumes you already have a chroot env setup to build packages.
-
-```bash
-git clone https://aur.archlinux.org/amdfan.git
-cd amdfan/
-makechrootpkg -c -r $HOME/$CHROOT
-```
-
-## Installing the Arch package
-
-``` bash
-sudo pacman -U --asdeps amdfan-*-any.pkg.tar.zst
-```
-
-# Installing from PyPi
-You can also install amdfan from pypi using something like poetry.
-
-``` bash
-poetry init
-poetry add amdfan
-poetry run amdfan --help
-```
-
-# Building Python package
-Requires [poetry](https://python-poetry.org/) to be installed
-
-``` bash
-git clone git@github.com:mcgillij/amdfan.git
-cd amdfan/
-poetry build
-```
