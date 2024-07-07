@@ -10,9 +10,9 @@ license=('GPL2')
 depends=('python' 'python-yaml' 'python-numpy' 'python-rich' 'python-click')
 makedepends=('python-poetry' 'python-build' 'python-installer')
 url="https://github.com/mcgillij/amdfan"
-#source=("https://github.com/mcgillij/amdfan/releases/download/$pkgver/amdfan-$pkgver.tar.gz")
-source=("dist/amdfan-$pkgver.tar.gz")
-md5sums=('6e4418082f1cf765d10552117c0895fe')
+source=("https://github.com/mcgillij/amdfan/releases/download/$pkgver/amdfan-$pkgver.tar.gz")
+#source=("amdfan-$pkgver.tar.gz")
+md5sums=('0b93cfba6b58f4b567bd5d5b91b875ec')
 
 build() {
   cd "$srcdir/$pkgname-$pkgver"
