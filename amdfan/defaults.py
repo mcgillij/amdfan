@@ -39,7 +39,8 @@ SERVICES: Dict[str, str] = {
 Description=amdfan controller
 
 [Service]
-ExecStart=/usr/bin/amdfan --daemon
+ExecStart=/usr/bin/amdfan daemon
+ExecReload=kill -HUP $MAINPID
 Restart=always
 
 [Install]

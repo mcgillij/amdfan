@@ -56,7 +56,7 @@ There are two ways to control your fans with Amdfan. Note that in order to contr
 
 The recommended way is through a system service started at boot. This will control the fans based on the detected temperature at a given interval.
 
-In case you don't want to use a service, you may also control the fans manually. While this is only adviced to do when first setting up your configuration, keep in mind you can also use it to temporarily take control away from the daemon until you revert the fan speed back to `auto`.
+In case you don't want to use a service, you may also control the fans manually. While this is only advised to do when first setting up your configuration, keep in mind you can also use it to temporarily take control away from the daemon until you revert the fan speed back to `auto`.
 
 ![screenshot](https://raw.githubusercontent.com/mcgillij/amdfan/main/images/manual.png)
 
@@ -98,7 +98,7 @@ If a configuration file is not found, a default one will be generated. If you wa
 - `frequency` (default `5`): how often (in seconds) we wait between updates
 - `cards` (required): a list of card names (from `/sys/class/drm`) which we want to control.
 
-Note! You can send a SIGHUP signal to the daemon to request a reload of the config without restarting the whole service.
+Note! You can send a **SIGHUP** signal to the daemon to request a reload of the config without restarting the whole service.
 
 # Install
 

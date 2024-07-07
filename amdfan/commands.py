@@ -54,7 +54,6 @@ def cli(
     help="Run the controller",
 )
 @click.option("--notification-fd", type=int)
-# @click.option("--background", is_flag=True, default=True)
 def run_daemon(notification_fd):
     FanController.start_daemon(
         notification_fd=notification_fd, pidfile=os.path.join(PIDFILE_DIR, "amdfan.pid")
@@ -77,7 +76,7 @@ def show_table(cards: Dict) -> Table:
 def monitor_cards(fps, single_run) -> None:
     scanner = Scanner()
     if not single_run:
-        c.print("AMD Fan Control - ctrl-c to quit")
+        c.print("AMD Fan Control - Ctrl-c to quit")
 
     with Live(refresh_per_second=fps) as live:
         while 1:
