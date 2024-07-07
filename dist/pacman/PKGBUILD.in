@@ -3,16 +3,16 @@
 
 pkgname=amdfan
 pkgdesc="Python daemon for controlling the fans on amdgpu cards"
-pkgver=0.1.28
+pkgver=0.2.1
 pkgrel=1
 arch=('any')
 license=('GPL2')
 depends=('python' 'python-yaml' 'python-numpy' 'python-rich' 'python-click')
-makedepends=('python-setuptools' 'python-poetry' 'python-build' 'python-installer')
+makedepends=('python-poetry' 'python-build' 'python-installer')
 url="https://github.com/mcgillij/amdfan"
-source=("https://github.com/mcgillij/amdfan/releases/download/$pkgver/amdfan-$pkgver.tar.gz")
-#source=("amdfan-$pkgver.tar.gz")
-md5sums=('7fe30661ba0d5117f32e4bab1db76888')
+#source=("https://github.com/mcgillij/amdfan/releases/download/$pkgver/amdfan-$pkgver.tar.gz")
+source=("dist/amdfan-$pkgver.tar.gz")
+md5sums=('6e4418082f1cf765d10552117c0895fe')
 
 build() {
   cd "$srcdir/$pkgname-$pkgver"
@@ -22,6 +22,6 @@ build() {
 package() {
   cd "$srcdir/$pkgname-$pkgver"
   python -m installer --destdir="$pkgdir" dist/*.whl
-  mkdir -p "$pkgdir/@libdir@/systemd/system"
-  install -Dm644 amdfan/packaging/pacman/amdfan.service "$pkgdir/@libdir@/systemd/system/"
+  mkdir -p "$pkgdir@libdir@/systemd/system"
+  install -Dm644 dist/systemd/amdfan.service "$pkgdir@libdir@/systemd/system/"
 }

@@ -1,0 +1,15 @@
+#####!/bin/bash
+echo "cleaning up previous run"
+rm -rf dist/*.whl dist/*.gz configure config.status autom4te.cache config.log *.gz *.zst *.log
+echo "autoconf"
+autoconf
+echo "./configure"
+./configure --prefix=/usr --libdir=/usr/lib --bindir=/usr/bin
+echo "Copy the PKGBUILD to the root dir for running makepkg"
+cp dist/pacman/PKGBUILD .
+echo "running poetry build"
+poetry build
+echo "getting the md5sum of the tarball"
+md5sum dist/*.gz
+echo "Copying the tarball to the root dir"
+cp dist/*.gz .

@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# PKGBUILD in the root that I use to build the package and the tarball/package
+PKGBUILD
+*.gz
+*.zst
 # C extensions
 *.so
 
