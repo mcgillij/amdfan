@@ -1,4 +1,7 @@
 #####!/bin/bash
+#
+set -xue -o pipefail
+
 echo "cleaning up previous run"
 rm -rf dist/*.whl dist/*.gz configure config.status autom4te.cache config.log *.gz *.zst *.log
 echo "autoconf"
@@ -7,6 +10,12 @@ echo "./configure"
 ./configure --prefix=/usr --libdir=/usr/lib --bindir=/usr/bin
 echo "Copy the PKGBUILD to the root dir for running makepkg"
 cp dist/pacman/PKGBUILD .
+echo "run linting"
+poetry run flake8 --verbose
+echo "run mypy"
+poetry run mypy amdfan/
+echo "run the tests"
+poetry run pytest
 echo "running poetry build"
 poetry build
 echo "getting the md5sum of the tarball"
