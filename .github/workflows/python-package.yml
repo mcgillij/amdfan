@@ -36,4 +36,4 @@ jobs:
         poetry run pytest
     - name: Test with mypy
       run: |
-        poetry run mypy src/
+        poetry run mypy amdfan/

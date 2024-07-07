@@ -38,7 +38,7 @@ c: Console = Console(style="green on black")
 def cli(
     ctx: click.Context,
     configuration: bool,
-    service: bool,
+    service: str,
 ) -> None:
     if configuration:
         print(DEFAULT_FAN_CONFIG)
