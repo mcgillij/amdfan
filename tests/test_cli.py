@@ -1,26 +1,26 @@
 import unittest
 
 from click.testing import CliRunner
-from amdfan.amdfan import cli
+
+from amdfan.commands import cli, run_daemon, set_fan_speed
 
 
 class TestCli(unittest.TestCase):
     def test_params(self):
-        daemon_param = "--daemon"
         runner = CliRunner()
-        result = runner.invoke(cli, daemon_param)
+        result = runner.invoke(run_daemon)
         assert result.exception
         assert result.exit_code == 1  # should be permission denied for non-root
-        help_param = "--help"
-        result = runner.invoke(cli, help_param)
+
+        result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
-        config_param = "--configuration"
-        result = runner.invoke(cli, config_param)
+
+        result = runner.invoke(cli, ["--configuration"])
         assert result.exit_code == 0
-        service_param = "--service"
-        result = runner.invoke(cli, service_param)
+
+        result = runner.invoke(cli, ["--service=systemd"])
         assert result.exit_code == 0
-        manual_param = "--manual"
-        result = runner.invoke(cli, manual_param, input="\n".join(["card0", "25"]))
+
+        result = runner.invoke(set_fan_speed, input="\n".join(["card0", "25"]))
         assert result.exception
         assert result.exit_code == 1  # should be permission denied for non-root
