@@ -39,7 +39,8 @@ These are all addressed in Amdfan, and as long as I’ve still got some AMD card
 Usage: amdfan [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --help  Show this message and exit.
+  -v, --version  Show the version and exit.
+  --help         Show this message and exit.
 
 Commands:
   daemon         Run the controller

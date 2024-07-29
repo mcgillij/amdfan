@@ -7,6 +7,7 @@ from .commands import cli, monitor_cards, run_daemon, set_fan_speed
 
 
 @click.group()
+@click.version_option(None, "-v", "--version", prog_name="amdfan")
 def main():
     pass
 
