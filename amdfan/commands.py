@@ -95,9 +95,10 @@ class FileDescriptorOpt(click.ParamType):
     show_default=True,
 )
 @click.option(
+    "--stdout",
     "--no-logfile",
     is_flag=True,
-    help="Disable logging file",
+    help="Disable logging file (prints to stdout instead)",
 )
 @click.option(
     "-b",
