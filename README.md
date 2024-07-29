@@ -92,7 +92,7 @@ frequency: 5
 # - card0
 ```
 
-If a configuration file is not found, a default one will be generated. If you want to make any changes to the default config before running it the daemon first, run `amdfan print-default --configuration | sudo tee /etc/amdfan.yml` and do your changes from there.
+If a configuration file is not found, a default one will be generated. If you want to make any changes to the default config before running the daemon, run `amdfan print-default --configuration | sudo tee /etc/amdfan.yml` and do your changes from there.
 
 - `speed_matrix` (required): a list of thresholds `[temperature, speed]` which are interpolated to calculate the fan speed.
 - `threshold` (default `0`): allows for some leeway in temperatures, as to not constantly change fan speed
