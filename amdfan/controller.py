@@ -246,15 +246,19 @@ class FanController:  # pylint: disable=too-few-public-methods
         self._stop_event = threading.Event()
 
     def reload_config(self, *_) -> None:
+        LOGGER.info("Received request to reload config")
         self.load_config()
 
     def terminate(self, *_) -> None:
+        LOGGER.info("Shutting down controller")
         self._running = False
         self._stop_event.set()
 
     def load_config(self) -> None:
+        LOGGER.info("Loading configuration")
         config = load_config(self.config_path)
         self.apply(config)
+        LOGGER.info("Configuration succesfully loaded")
 
     def apply(self, config) -> None:
         self._scanner = Scanner(config.get("cards"))
@@ -350,6 +354,7 @@ class FanController:  # pylint: disable=too-few-public-methods
         for location in CONFIG_LOCATIONS:
             if os.path.isfile(location):
                 config_path = location
+                LOGGER.info("Found configuration file at %s", config_path)
                 break
 
         if config_path is None:

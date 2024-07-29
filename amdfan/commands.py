@@ -155,8 +155,8 @@ def show_table(cards: Dict) -> Table:
 
 
 @click.command(name="monitor", help="View the current temperature and speed")
-@click.option("--fps", default=5, help="Updates per second")
-@click.option("--single-run", is_flag=True, default=False, help="Print and exit")
+@click.option("--fps", default=5, help="Updates per second", show_default=True)
+@click.option("-1", "--single-run", is_flag=True, default=False, help="Print and exit")
 def monitor_cards(fps, single_run) -> None:
     scanner = Scanner()
     if not single_run:
@@ -170,9 +170,25 @@ def monitor_cards(fps, single_run) -> None:
             time.sleep(1 / fps)
 
 
-@click.command(name="set", help="Manually override the fan speed")
-@click.option("--card", help="Specify which card to override")
-@click.option("--speed", help="Specify which speed to change to")
+class CardOpt(click.ParamType):
+    name = "CARD"
+
+
+class SpeedOpt(click.ParamType):
+    name = "SPEED"
+
+
+@click.command(
+    name="set",
+    short_help="Manually override the fan speed",
+    help="Manually override the fan speed.\n\nIf insufficient properties are passed, goes into interactive mode. If both values are valid, interactive mode is not necessary\n\nSpeed values are set with integer values representing a percentage, and can be reverted back to the automatic controller by setting the speed to 'auto'.",
+)
+@click.option("--card", type=CardOpt(), help="Specify which card to override")
+@click.option(
+    "--speed",
+    type=SpeedOpt(),
+    help="Specify which speed to change to",
+)
 def set_fan_speed(card, speed) -> None:
     scanner = Scanner()
     if card is None:
