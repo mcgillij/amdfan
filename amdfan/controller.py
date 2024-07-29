@@ -5,6 +5,7 @@ import os
 import re
 import signal
 import sys
+import threading
 import time
 from typing import Any, Callable, Dict, List, Optional, Self
 
@@ -238,11 +239,20 @@ class FanController:  # pylint: disable=too-few-public-methods
 
     def __init__(self, config_path, notification_fd=None) -> None:
         self.config_path = config_path
-        self.reload_config()
+        self.load_config()
         self._last_temp = 0
         self._ready_fd = notification_fd
+        self._running = False
+        self._stop_event = threading.Event()
 
     def reload_config(self, *_) -> None:
+        self.load_config()
+
+    def terminate(self, *_) -> None:
+        self._running = False
+        self._stop_event.set()
+
+    def load_config(self) -> None:
         config = load_config(self.config_path)
         self.apply(config)
 
@@ -256,15 +266,17 @@ class FanController:  # pylint: disable=too-few-public-methods
         self._frequency = config.get("frequency", 5)
 
     def main(self) -> None:
-        LOGGER.info("Starting amdfan")
         if self._ready_fd is not None:
             report_ready(self._ready_fd)
 
-        while True:
+        self._running = True
+        LOGGER.info("Controller is running")
+        while self._running:
             for name, card in self._scanner.cards.items():
                 self.refresh_card(name, card)
 
-            time.sleep(self._frequency)
+            self._stop_event.wait(self._frequency)
+        LOGGER.info("Stopped controller")
 
     def refresh_card(self, name, card):
         apply = True
@@ -348,9 +360,10 @@ class FanController:  # pylint: disable=too-few-public-methods
 
         controller = cls(config_path, notification_fd=notification_fd)
         signal.signal(signal.SIGHUP, controller.reload_config)
+        signal.signal(signal.SIGTERM, controller.terminate)
+        signal.signal(signal.SIGINT, controller.terminate)
         controller.main()
-
-        return controller
+        LOGGER.info("Goodbye")
 
 
 def load_config(path) -> Callable:

@@ -2,6 +2,7 @@
 """ entry point for amdfan """
 # noqa: E501
 import os
+import signal
 import sys
 import time
 from typing import Dict
@@ -122,7 +123,18 @@ def run_daemon(
         logfile = None
 
     if action:
-        pass  # nyi
+        try:
+            with open(pidfile) as f:
+                pid = int(f.read())
+                if action == "stop":
+                    os.kill(pid, signal.SIGTERM)
+                elif action == "reload":
+                    os.kill(pid, signal.SIGHUP)
+
+        except FileNotFoundError:
+            LOGGER.warning("Could not find pidfile=%s", pidfile)
+        except ValueError:
+            LOGGER.warning("Invalid PID value in pidfile=%s", pidfile)
     else:
         FanController.start_manager(
             notification_fd=notification_fd,

@@ -100,7 +100,7 @@ If a configuration file is not found, a default one will be generated. If you wa
 - `frequency` (default `5`): how often (in seconds) we wait between updates
 - `cards` (required): a list of card names (from `/sys/class/drm`) which we want to control.
 
-Note! You can send a **SIGHUP** signal to the daemon to request a reload of the config without restarting the whole service.
+Note! You can send a **SIGHUP** signal to the daemon to request a reload of the config without restarting the whole service. Additionally, if you're using a pidfile, you can send a signal to reload the config with `amdfan daemon --signal=reload`
 
 # Install
 
