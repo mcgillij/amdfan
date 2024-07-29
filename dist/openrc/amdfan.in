@@ -1,10 +1,13 @@
 #!/sbin/openrc-run
 
 description="amdfan controller"
-command="@bindir@/amdfan"
-command_args="--daemon"
-command_background=true
 pidfile="/var/run/${RC_SVCNAME}.pid"
+
+command="@bindir@/amdfan"
+command_args="daemon --logfile=/var/log/amdfan.log --pidfile=${pidfile}"
+command_args_background="--background"
+
+extra_started_commands="reload"
 
 reload() {
 	start-stop-daemon --signal SIGHUP --pidfile "${pidfile}"

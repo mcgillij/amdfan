@@ -50,14 +50,86 @@ def cli(
 
 
 @click.command(
-    name="daemon",
-    help="Run the controller",
+    name="manage",
+    short_help="Run the controller",
+    help="Run the controller in the foreground.\n\nThis command mostly exists for short-lived invocations on a manual shell. For more options and customization, consider using the *daemon* subcommand instead.",
 )
-@click.option("--notification-fd", type=int)
-def run_daemon(notification_fd):
-    FanController.start_daemon(
-        notification_fd=notification_fd, pidfile=os.path.join(PIDFILE_DIR, "amdfan.pid")
-    )
+def run_manager():
+    FanController.start_manager(daemon=False)
+
+
+class FileDescriptorOpt(click.ParamType):
+    name = "fd"
+
+
+@click.command(
+    name="daemon",
+    help="Run the controller as a service",
+)
+@click.option(
+    "-f",
+    "--notification-fd",
+    type=FileDescriptorOpt(),
+    help="Specify file descriptor for ready state",
+)
+@click.option(
+    "--pidfile",
+    "-p",
+    type=click.Path(),
+    default=os.path.join(PIDFILE_DIR, "amdfan.pid"),
+    help=f"Pidfile path",
+    show_default=True,
+)
+@click.option(
+    "--no-pidfile",
+    is_flag=True,
+    help=f"Disable pidfile",
+)
+@click.option(
+    "-l",
+    "--logfile",
+    type=click.Path(),
+    default="/var/log/amdfan.log",
+    help="Logging path",
+    show_default=True,
+)
+@click.option(
+    "--no-logfile",
+    is_flag=True,
+    help="Disable logging file",
+)
+@click.option(
+    "-b",
+    "--daemon",
+    "--background",
+    is_flag=True,
+    help="Fork into the background as a daemon. Note that this detaches amdfan from your terminal.",
+)
+@click.option(
+    "-s",
+    "--signal",
+    "action",
+    type=click.Choice(["stop", "reload"]),
+    default=None,
+    help="Stop or reload a running instance from the given pidfile",
+)
+def run_daemon(
+    notification_fd, logfile, pidfile, daemon, no_pidfile, no_logfile, action
+):
+    if no_pidfile:
+        pidfile = None
+    if no_logfile:
+        logfile = None
+
+    if action:
+        pass  # nyi
+    else:
+        FanController.start_manager(
+            notification_fd=notification_fd,
+            pidfile=pidfile,
+            logfile=logfile,
+            daemon=daemon,
+        )
 
 
 def show_table(cards: Dict) -> Table:

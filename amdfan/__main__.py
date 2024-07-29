@@ -3,7 +3,7 @@
 # __main__.py
 import click
 
-from .commands import cli, monitor_cards, run_daemon, set_fan_speed
+from .commands import cli, monitor_cards, run_daemon, run_manager, set_fan_speed
 
 
 @click.group()
@@ -13,6 +13,7 @@ def main():
 
 
 main.add_command(cli)
+main.add_command(run_manager)
 main.add_command(run_daemon)
 main.add_command(monitor_cards)
 main.add_command(set_fan_speed)

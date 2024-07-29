@@ -34,6 +34,40 @@ def report_ready(fd: int) -> None:
     os.write(fd, b"READY=1\n")
 
 
+def daemonize(stdin="/dev/null", stdout="/dev/null", stderr="/dev/null") -> None:
+    try:
+        pid = os.fork()
+        if pid > 0:
+            os._exit(0)
+    except OSError as e:
+        raise Exception("Unable to background amdfan")
+
+    os.chdir("/")
+    os.setsid()
+    os.umask(0)
+
+    try:
+        pid = os.fork()
+        if pid > 0:
+            os._exit(0)
+    except OSError as e:
+        raise Exception("Unable to daemonize amdfan")
+
+    redirect_fd(stdin, stdout, stderr)
+
+
+def redirect_fd(stdin="/dev/null", stdout="/dev/null", stderr="/dev/null"):
+    sys.stdout.flush()
+    sys.stderr.flush()
+    with open(stdin, "r") as f:
+        os.dup2(f.fileno(), sys.stdin.fileno())
+
+    with open(stdout, "a+") as f:
+        os.dup2(f.fileno(), sys.stdout.fileno())
+    with open(stderr, "a+") as f:
+        os.dup2(f.fileno(), sys.stderr.fileno())
+
+
 class Curve:  # pylint: disable=too-few-public-methods
     """
     creates a fan curve based on user defined points
@@ -274,10 +308,30 @@ class FanController:  # pylint: disable=too-few-public-methods
             self._last_temp = temp
 
     @classmethod
-    def start_daemon(
-        cls, notification_fd: Optional[int], pidfile: Optional[str] = None
-    ) -> Self:
+    def start_manager(
+        cls,
+        notification_fd: Optional[int] = None,
+        pidfile: Optional[str] = None,
+        daemon=False,
+        logfile=None,
+    ) -> None:
+        if daemon:
+            daemonize(stdout=logfile, stderr=logfile)
+        elif logfile:
+            redirect_fd(stdout=logfile, stderr=logfile)
+
+        if logfile:
+            open(logfile, "w").close()  # delete old logs
+
+        LOGGER.info("Launching the amdfan controller")
+
         if pidfile:
+            if os.path.isfile(pidfile):
+                with open(pidfile, "r") as f:
+                    LOGGER.warning(
+                        "Already found a pidfile for amdfan. Old PID was: %s",
+                        f.read(),
+                    )
             create_pidfile(pidfile)
 
         config_path = None

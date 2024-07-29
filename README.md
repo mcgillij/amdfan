@@ -43,7 +43,8 @@ Options:
   --help         Show this message and exit.
 
 Commands:
-  daemon         Run the controller
+  daemon         Run the controller as a service
+  manage         Run the fan controller
   monitor        View the current temperature and speed
   print-default  Convenient defaults
   set            Manually override the fan speed
