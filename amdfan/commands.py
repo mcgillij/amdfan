@@ -2,6 +2,7 @@
 """ entry point for amdfan """
 # noqa: E501
 import os
+import signal
 import sys
 import time
 from typing import Dict
@@ -50,14 +51,98 @@ def cli(
 
 
 @click.command(
-    name="daemon",
-    help="Run the controller",
+    name="manage",
+    short_help="Run the controller",
+    help="Run the controller in the foreground.\n\nThis command mostly exists for short-lived invocations on a manual shell. For more options and customization, consider using the *daemon* subcommand instead.",
 )
-@click.option("--notification-fd", type=int)
-def run_daemon(notification_fd):
-    FanController.start_daemon(
-        notification_fd=notification_fd, pidfile=os.path.join(PIDFILE_DIR, "amdfan.pid")
-    )
+def run_manager():
+    FanController.start_manager(daemon=False)
+
+
+class FileDescriptorOpt(click.ParamType):
+    name = "fd"
+
+
+@click.command(
+    name="daemon",
+    help="Run the controller as a service",
+)
+@click.option(
+    "-f",
+    "--notification-fd",
+    type=FileDescriptorOpt(),
+    help="Specify file descriptor for ready state",
+)
+@click.option(
+    "--pidfile",
+    "-p",
+    type=click.Path(),
+    default=os.path.join(PIDFILE_DIR, "amdfan.pid"),
+    help="Pidfile path",
+    show_default=True,
+)
+@click.option(
+    "--no-pidfile",
+    is_flag=True,
+    help="Disable pidfile",
+)
+@click.option(
+    "-l",
+    "--logfile",
+    type=click.Path(),
+    default="/var/log/amdfan.log",
+    help="Logging path",
+    show_default=True,
+)
+@click.option(
+    "--no-logfile",
+    "--stdout",
+    is_flag=True,
+    help="Disable logging file (prints to stdout instead)",
+)
+@click.option(
+    "-b",
+    "--daemon",
+    "--background",
+    is_flag=True,
+    help="Fork into the background as a daemon. Note that this detaches amdfan from your terminal.",
+)
+@click.option(
+    "-s",
+    "--signal",
+    "action",
+    type=click.Choice(["stop", "reload"]),
+    default=None,
+    help="Stop or reload a running instance from the given pidfile",
+)
+def run_daemon(
+    notification_fd, logfile, pidfile, daemon, no_pidfile, no_logfile, action
+):
+    if no_pidfile:
+        pidfile = None
+    if no_logfile:
+        logfile = None
+
+    if action:
+        try:
+            with open(pidfile) as f:
+                pid = int(f.read())
+                if action == "stop":
+                    os.kill(pid, signal.SIGTERM)
+                elif action == "reload":
+                    os.kill(pid, signal.SIGHUP)
+
+        except FileNotFoundError:
+            LOGGER.warning("Could not find pidfile=%s", pidfile)
+        except ValueError:
+            LOGGER.warning("Invalid PID value in pidfile=%s", pidfile)
+    else:
+        FanController.start_manager(
+            notification_fd=notification_fd,
+            pidfile=pidfile,
+            logfile=logfile,
+            daemon=daemon,
+        )
 
 
 def show_table(cards: Dict) -> Table:
@@ -71,8 +156,8 @@ def show_table(cards: Dict) -> Table:
 
 
 @click.command(name="monitor", help="View the current temperature and speed")
-@click.option("--fps", default=5, help="Updates per second")
-@click.option("--single-run", is_flag=True, default=False, help="Print and exit")
+@click.option("--fps", default=5, help="Updates per second", show_default=True)
+@click.option("-1", "--single-run", is_flag=True, default=False, help="Print and exit")
 def monitor_cards(fps, single_run) -> None:
     scanner = Scanner()
     if not single_run:
@@ -86,9 +171,25 @@ def monitor_cards(fps, single_run) -> None:
             time.sleep(1 / fps)
 
 
-@click.command(name="set", help="Manually override the fan speed")
-@click.option("--card", help="Specify which card to override")
-@click.option("--speed", help="Specify which speed to change to")
+class CardOpt(click.ParamType):
+    name = "CARD"
+
+
+class SpeedOpt(click.ParamType):
+    name = "SPEED"
+
+
+@click.command(
+    name="set",
+    short_help="Manually override the fan speed",
+    help="Manually override the fan speed.\n\nIf insufficient properties are passed, goes into interactive mode. If both values are valid, interactive mode is not necessary\n\nSpeed values are set with integer values representing a percentage, and can be reverted back to the automatic controller by setting the speed to 'auto'.",
+)
+@click.option("--card", type=CardOpt(), help="Specify which card to override")
+@click.option(
+    "--speed",
+    type=SpeedOpt(),
+    help="Specify which speed to change to",
+)
 def set_fan_speed(card, speed) -> None:
     scanner = Scanner()
     if card is None:

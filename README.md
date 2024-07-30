@@ -39,10 +39,12 @@ These are all addressed in Amdfan, and as long as I’ve still got some AMD card
 Usage: amdfan [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --help  Show this message and exit.
+  -v, --version  Show the version and exit.
+  --help         Show this message and exit.
 
 Commands:
-  daemon         Run the controller
+  daemon         Run the controller as a service
+  manage         Run the fan controller
   monitor        View the current temperature and speed
   print-default  Convenient defaults
   set            Manually override the fan speed
@@ -91,14 +93,14 @@ frequency: 5
 # - card0
 ```
 
-If a configuration file is not found, a default one will be generated. If you want to make any changes to the default config before running it the daemon first, run `amdfan print-default --configuration | sudo tee /etc/amdfan.yml` and do your changes from there.
+If a configuration file is not found, a default one will be generated. If you want to make any changes to the default config before running the daemon, run `amdfan print-default --configuration | sudo tee /etc/amdfan.yml` and do your changes from there.
 
 - `speed_matrix` (required): a list of thresholds `[temperature, speed]` which are interpolated to calculate the fan speed.
 - `threshold` (default `0`): allows for some leeway in temperatures, as to not constantly change fan speed
 - `frequency` (default `5`): how often (in seconds) we wait between updates
 - `cards` (required): a list of card names (from `/sys/class/drm`) which we want to control.
 
-Note! You can send a **SIGHUP** signal to the daemon to request a reload of the config without restarting the whole service.
+Note! You can send a **SIGHUP** signal to the daemon to request a reload of the config without restarting the whole service. Additionally, if you're using a pidfile, you can send a signal to reload the config with `amdfan daemon --signal=reload`
 
 # Install
 

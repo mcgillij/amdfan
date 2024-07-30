@@ -5,8 +5,8 @@ import os
 import re
 import signal
 import sys
-import time
-from typing import Any, Callable, Dict, List, Optional, Self
+import threading
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import yaml
@@ -32,6 +32,40 @@ def create_pidfile(pidfile: str) -> None:
 
 def report_ready(fd: int) -> None:
     os.write(fd, b"READY=1\n")
+
+
+def daemonize(stdin="/dev/null", stdout="/dev/null", stderr="/dev/null") -> None:
+    try:
+        pid = os.fork()
+        if pid > 0:
+            os._exit(0)
+    except OSError as e:
+        raise Exception("Unable to background amdfan: %s" % e)
+
+    os.chdir("/")
+    os.setsid()
+    os.umask(0)
+
+    try:
+        pid = os.fork()
+        if pid > 0:
+            os._exit(0)
+    except OSError as e:
+        raise Exception("Unable to daemonize amdfan: %s" % e)
+
+    redirect_fd(stdin, stdout, stderr)
+
+
+def redirect_fd(stdin="/dev/null", stdout="/dev/null", stderr="/dev/null"):
+    sys.stdout.flush()
+    sys.stderr.flush()
+    with open(stdin, "r") as f:
+        os.dup2(f.fileno(), sys.stdin.fileno())
+
+    with open(stdout, "a+") as f:
+        os.dup2(f.fileno(), sys.stdout.fileno())
+    with open(stderr, "a+") as f:
+        os.dup2(f.fileno(), sys.stderr.fileno())
 
 
 class Curve:  # pylint: disable=too-few-public-methods
@@ -204,13 +238,26 @@ class FanController:  # pylint: disable=too-few-public-methods
 
     def __init__(self, config_path, notification_fd=None) -> None:
         self.config_path = config_path
-        self.reload_config()
+        self.load_config()
         self._last_temp = 0
         self._ready_fd = notification_fd
+        self._running = False
+        self._stop_event = threading.Event()
 
     def reload_config(self, *_) -> None:
+        LOGGER.info("Received request to reload config")
+        self.load_config()
+
+    def terminate(self, *_) -> None:
+        LOGGER.info("Shutting down controller")
+        self._running = False
+        self._stop_event.set()
+
+    def load_config(self) -> None:
+        LOGGER.info("Loading configuration")
         config = load_config(self.config_path)
         self.apply(config)
+        LOGGER.info("Configuration succesfully loaded")
 
     def apply(self, config) -> None:
         self._scanner = Scanner(config.get("cards"))
@@ -222,15 +269,17 @@ class FanController:  # pylint: disable=too-few-public-methods
         self._frequency = config.get("frequency", 5)
 
     def main(self) -> None:
-        LOGGER.info("Starting amdfan")
         if self._ready_fd is not None:
             report_ready(self._ready_fd)
 
-        while True:
+        self._running = True
+        LOGGER.info("Controller is running")
+        while self._running:
             for name, card in self._scanner.cards.items():
                 self.refresh_card(name, card)
 
-            time.sleep(self._frequency)
+            self._stop_event.wait(self._frequency)
+        LOGGER.info("Stopped controller")
 
     def refresh_card(self, name, card):
         apply = True
@@ -274,16 +323,37 @@ class FanController:  # pylint: disable=too-few-public-methods
             self._last_temp = temp
 
     @classmethod
-    def start_daemon(
-        cls, notification_fd: Optional[int], pidfile: Optional[str] = None
-    ) -> Self:
+    def start_manager(
+        cls,
+        notification_fd: Optional[int] = None,
+        pidfile: Optional[str] = None,
+        daemon=False,
+        logfile=None,
+    ) -> None:
+        if daemon:
+            daemonize(stdout=logfile, stderr=logfile)
+        elif logfile:
+            redirect_fd(stdout=logfile, stderr=logfile)
+
+        if logfile:
+            open(logfile, "w").close()  # delete old logs
+
+        LOGGER.info("Launching the amdfan controller")
+
         if pidfile:
+            if os.path.isfile(pidfile):
+                with open(pidfile, "r") as f:
+                    LOGGER.warning(
+                        "Already found a pidfile for amdfan. Old PID was: %s",
+                        f.read(),
+                    )
             create_pidfile(pidfile)
 
         config_path = None
         for location in CONFIG_LOCATIONS:
             if os.path.isfile(location):
                 config_path = location
+                LOGGER.info("Found configuration file at %s", config_path)
                 break
 
         if config_path is None:
@@ -294,9 +364,10 @@ class FanController:  # pylint: disable=too-few-public-methods
 
         controller = cls(config_path, notification_fd=notification_fd)
         signal.signal(signal.SIGHUP, controller.reload_config)
+        signal.signal(signal.SIGTERM, controller.terminate)
+        signal.signal(signal.SIGINT, controller.terminate)
         controller.main()
-
-        return controller
+        LOGGER.info("Goodbye")
 
 
 def load_config(path) -> Callable:
