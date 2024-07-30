@@ -6,8 +6,7 @@ import re
 import signal
 import sys
 import threading
-import time
-from typing import Any, Callable, Dict, List, Optional, Self
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import yaml
@@ -41,7 +40,7 @@ def daemonize(stdin="/dev/null", stdout="/dev/null", stderr="/dev/null") -> None
         if pid > 0:
             os._exit(0)
     except OSError as e:
-        raise Exception("Unable to background amdfan")
+        raise Exception("Unable to background amdfan: %s" % e)
 
     os.chdir("/")
     os.setsid()
@@ -52,7 +51,7 @@ def daemonize(stdin="/dev/null", stdout="/dev/null", stderr="/dev/null") -> None
         if pid > 0:
             os._exit(0)
     except OSError as e:
-        raise Exception("Unable to daemonize amdfan")
+        raise Exception("Unable to daemonize amdfan: %s" % e)
 
     redirect_fd(stdin, stdout, stderr)
 

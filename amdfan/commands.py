@@ -78,13 +78,13 @@ class FileDescriptorOpt(click.ParamType):
     "-p",
     type=click.Path(),
     default=os.path.join(PIDFILE_DIR, "amdfan.pid"),
-    help=f"Pidfile path",
+    help="Pidfile path",
     show_default=True,
 )
 @click.option(
     "--no-pidfile",
     is_flag=True,
-    help=f"Disable pidfile",
+    help="Disable pidfile",
 )
 @click.option(
     "-l",
@@ -95,8 +95,8 @@ class FileDescriptorOpt(click.ParamType):
     show_default=True,
 )
 @click.option(
-    "--stdout",
     "--no-logfile",
+    "--stdout",
     is_flag=True,
     help="Disable logging file (prints to stdout instead)",
 )
