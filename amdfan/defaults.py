@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" includes strings to suggest default files """
+"""includes strings to suggest default files"""
 
 from typing import Dict
 
