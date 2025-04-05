@@ -152,8 +152,8 @@ class Card:
             return endpoint_file.read()
 
     def write_endpoint(self, endpoint: str, data: int) -> int:
-        # debug here
-        print("writing to endpoint", endpoint, "data", data)
+        # debug here, troubleshooting 7900xtx
+        #print("writing to endpoint", endpoint, "data", data) 
         try:
             with open(self._endpoints[endpoint], "w", encoding="utf8") as endpoint_file:
                 return endpoint_file.write(str(data))
@@ -279,14 +279,14 @@ class FanController:  # pylint: disable=too-few-public-methods
         LOGGER.info("Controller is running")
         while self._running:
             for name, card in self._scanner.cards.items():
-                print("refreshing card", name, card)
+                #print("refreshing card", name, card)
                 self.refresh_card(name, card)
 
             self._stop_event.wait(self._frequency)
         LOGGER.info("Stopped controller")
 
     def refresh_card(self, name, card):
-        print("refreshing card", name, card)
+        #print("refreshing card", name, card)
         apply = True
         temp = card.gpu_temp
         speed = int(self._curve.get_speed(int(temp)))
@@ -308,7 +308,7 @@ class FanController:  # pylint: disable=too-few-public-methods
             card.fan_max,
         )
 
-        print(f"fan_min: {card.fan_min}, fan_max: {card.fan_max}")
+        #print(f"fan_min: {card.fan_min}, fan_max: {card.fan_max}")
 
         if self._threshold and self._last_temp:
 
