@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" entry point for amdfan """
+"""entry point for amdfan"""
 # noqa: E501
 import os
 import signal

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" holds the configuration for the amdfan runtime """
+"""holds the configuration for the amdfan runtime"""
 import logging
 import os
 from typing import List

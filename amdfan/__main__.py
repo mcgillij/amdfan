@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" entry point for amdfan """
+"""entry point for amdfan"""
 # __main__.py
 import click
 
