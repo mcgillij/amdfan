@@ -31,6 +31,12 @@ speed_matrix:
 # cards:
 # can be any card returned from `ls /sys/class/drm | grep "^card[[:digit:]]$"`
 # - card0
+#
+# How should we handle misbehaving cards?
+# - `auto` will only exit when there's no writable cards. Can be useful if you have multiple cards, and you know one of them is misbehaving.
+# - `never` will exit even if one card is broken. This is perhaps the safest, as your service will detect crashing.
+# - `always` will ignore any cards we can't write to. Might be useful if you only want to use amdfan as a monitor, and controlling it elsewhere.
+# permit_monitor_only: auto
 """
 
 SERVICES: Dict[str, str] = {

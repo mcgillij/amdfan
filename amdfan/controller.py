@@ -6,7 +6,7 @@ import re
 import signal
 import sys
 import threading
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import yaml
@@ -110,6 +110,18 @@ class Curve:  # pylint: disable=too-few-public-methods
 
         return np.interp(x=temp, xp=self.temps, fp=self.speeds)
 
+    @staticmethod
+    def _validate_matrix_config(points):
+        # TODO: check that values are non-overlapping and increasing
+        if not isinstance(points, list):
+            raise ValueError("speed_matrix must be a list of pairs of numbers")
+        try:
+            for left, right in points:
+                if not isinstance(left, int) or not isinstance(right, int):
+                    raise ValueError
+        except ValueError as e:
+            raise ValueError("each item in speed_matrix must contain two numbers:", e)
+
 
 class Card:
     """
@@ -127,29 +139,44 @@ class Card:
 
     def __init__(self, card_id: str) -> None:
         self._id = card_id
+        self.broken_read = False
+        self.broken_write = False
 
         for node in os.listdir(os.path.join(ROOT_DIR, self._id, HWMON_DIR)):
             if re.match(self.HWMON_REGEX, node):
                 self._monitor = node
         self._endpoints = self._load_endpoints()
+        try:
+            self._verify_card()
+        except FileNotFoundError:
+            LOGGER.warning("%s is missing expected endpoints!", self._id)
 
     def _verify_card(self) -> None:
+        missing = []
         for endpoint in self.AMD_FIELDS:
             if endpoint not in self._endpoints:
-                LOGGER.info("skipping card: %s missing endpoint %s", self._id, endpoint)
-                raise FileNotFoundError
+                missing.append(endpoint)
+
+        if missing:
+            LOGGER.info("card: %s, missing endpoints: %s", self._id, missing)
+            raise FileNotFoundError
 
     def _load_endpoints(self) -> Dict:
         _endpoints = {}
-        _dir = os.path.join(ROOT_DIR, self._id, HWMON_DIR, self._monitor)
-        for endpoint in os.listdir(_dir):
+        self._dir = os.path.join(ROOT_DIR, self._id, HWMON_DIR, self._monitor)
+        for endpoint in os.listdir(self._dir):
             if endpoint not in ("device", "power", "subsystem", "uevent"):
-                _endpoints[endpoint] = os.path.join(_dir, endpoint)
+                _endpoints[endpoint] = os.path.join(self._dir, endpoint)
         return _endpoints
 
     def read_endpoint(self, endpoint: str) -> str:
-        with open(self._endpoints[endpoint], "r", encoding="utf8") as endpoint_file:
-            return endpoint_file.read()
+        try:
+            with open(self._endpoints[endpoint], "r", encoding="utf8") as endpoint_file:
+                return endpoint_file.read()
+        except KeyError as e:
+            LOGGER.error("Failed to find endpoint %s for %s.\nDoes %s support the requested control?", endpoint, self._id, self._dir)
+            self.broken_read = True
+            raise ValueError(e)
 
     def write_endpoint(self, endpoint: str, data: int) -> int:
         # debug here, troubleshooting 7900xtx
@@ -157,9 +184,14 @@ class Card:
         try:
             with open(self._endpoints[endpoint], "w", encoding="utf8") as endpoint_file:
                 return endpoint_file.write(str(data))
-        except PermissionError:
+        except PermissionError as e:
             LOGGER.error("Failed writing to devfs file, are you running as root?")
-            sys.exit(1)
+            self.broken_write = False
+            raise e
+        except KeyError as e:
+            LOGGER.error("Failed to find endpoint %s for %s.\nDoes %s support the requested control?", endpoint, self._id, self._dir)
+            self.broken_write = True
+            raise ValueError(e)
 
     @property
     def fan_speed(self) -> int:
@@ -181,13 +213,16 @@ class Card:
         return int(self.read_endpoint("pwm1_min"))
 
     def set_system_controlled_fan(self, state: bool) -> None:
-
         system_controlled_fan = 2
         manual_control = 1
 
-        self.write_endpoint(
-            "pwm1_enable", system_controlled_fan if state else manual_control
-        )
+        try:
+            self.write_endpoint(
+                "pwm1_enable", system_controlled_fan if state else manual_control
+            )
+        except (ValueError, PermissionError) as e:
+            LOGGER.warning("Unable to toggle between system and manual control")
+            raise e
 
     def set_fan_speed(self, speed: int) -> int:
         if speed >= 100:
@@ -197,8 +232,11 @@ class Card:
         else:
             speed = int((self.fan_max - self.fan_min) / 100 * speed + self.fan_min)
 
-        self.set_system_controlled_fan(False)
-        return self.write_endpoint("pwm1", speed)
+        try:
+            self.set_system_controlled_fan(False)
+            return self.write_endpoint("pwm1", speed)
+        except (ValueError, PermissionError):
+            raise RuntimeError("Couldn't set fan speed")
 
 
 class Scanner:  # pylint: disable=too-few-public-methods
@@ -249,7 +287,10 @@ class FanController:  # pylint: disable=too-few-public-methods
 
     def reload_config(self, *_) -> None:
         LOGGER.info("Received request to reload config")
-        self.load_config()
+        try:
+            self.load_config()
+        except ValueError:
+            LOGGER.warning("Failed to update configuration. Please verify its content, or generate a new one from the defaults. Running with original configuration.")
 
     def terminate(self, *_) -> None:
         LOGGER.info("Shutting down controller")
@@ -258,8 +299,40 @@ class FanController:  # pylint: disable=too-few-public-methods
 
     def load_config(self) -> None:
         LOGGER.info("Loading configuration")
-        config = load_config(self.config_path)
+        required_keys = [
+            "speed_matrix",
+        ]
+        defaults = {
+            "threshold": 0,
+            "frequency": 5,
+            "permit_monitor_only": "never"
+        }
+
+        config = {}
+        raw_config = load_yaml_config_file(self.config_path)
+        for key in required_keys:
+            if raw_config.get(key) is None:
+                raise ValueError("missing required configuration key: " + str(key))
+
+        v = config["speed_matrix"] = raw_config["speed_matrix"]
+        Curve._validate_matrix_config(v)
+
+        v = config["threshold"] = raw_config.get("threshold")
+        if v is not None and not isinstance(v, int):
+            raise ValueError("threshold must be an integer. found " + repr(v))
+
+        v = config["frequency"] = raw_config.get("frequency")
+        if v is not None and not isinstance(v, int):
+            raise ValueError("frequency must be an integer. found " + repr(v))
+
+        v = config["permit_monitor_only"] = raw_config.get("permit_monitor_only")
+        if v not in [None, "always", "never", "auto"]:
+            raise ValueError("permit_monitor_only must be one of 'always', 'never', or 'auto'. found " + repr(v))
+
+        for k in defaults:
+            config.setdefault(k, defaults[k])
         self.apply(config)
+
         LOGGER.info("Configuration succesfully loaded")
 
     def apply(self, config) -> None:
@@ -267,9 +340,11 @@ class FanController:  # pylint: disable=too-few-public-methods
         if len(self._scanner.cards) < 1:
             LOGGER.error("no compatible cards found, exiting")
             sys.exit(1)
-        self._curve = Curve(config.get("speed_matrix"))
-        self._threshold = config.get("threshold", 0)
-        self._frequency = config.get("frequency", 5)
+
+        self._curve = Curve(config["speed_matrix"])
+        self._threshold = config["threshold"]
+        self._frequency = config["frequency"]
+        self._permit_monitor_only = config["permit_monitor_only"]
 
     def main(self) -> None:
         if self._ready_fd is not None:
@@ -278,14 +353,40 @@ class FanController:  # pylint: disable=too-few-public-methods
         self._running = True
         LOGGER.info("Controller is running")
         while self._running:
-            for name, card in self._scanner.cards.items():
-                # print("refreshing card", name, card)
-                self.refresh_card(name, card)
+            for name in self._scanner.cards:
+                card = self._scanner.cards[name]
+                try:
+                    # print("refreshing card", name, card)
+                    if card.broken_write:
+                        self.refresh_card(name, card, read_only=True)
+                        continue
+
+                    self.refresh_card(name, card)
+                except RuntimeError:
+                    if card.broken_read:
+                        LOGGER.error("Removing %s from runtime as unable to monitor it", name)
+                        self._scanner.cards.pop(name)
+                    elif card.broken_write:
+                        LOGGER.warning("Entering read-only mode for %s. Only thermal readings will be provided.", name)
 
             self._stop_event.wait(self._frequency)
+
+            if self._permit_monitor_only == "auto":
+                if all(card.broken_write for card in self._scanner.cards.values()):
+                    LOGGER.info("No cards permit writing. This seems unlikely. Exiting")
+                    break
+            elif self._permit_monitor_only == "never":
+                if any(card.broken_write for card in self._scanner.cards.values()):
+                    LOGGER.info("Found a card in read-only mode. Exiting")
+                    break
+
+            elif self._permit_monitor_only == "always":
+                count = sum(card.broken_write for card in self._scanner.cards.values())
+                LOGGER.info("Found %d cards in read-only mode, from a total of %d cards", count, len(self._scanner.cards))
+
         LOGGER.info("Stopped controller")
 
-    def refresh_card(self, name, card):
+    def refresh_card(self, name, card, *, read_only=False):
         # print("refreshing card", name, card)
         apply = True
         temp = card.gpu_temp
@@ -320,13 +421,16 @@ class FanController:  # pylint: disable=too-few-public-methods
             if int(temp) in range(int(low), int(high)):
                 LOGGER.debug("temp in range, doing nothing")
                 apply = False
+            elif read_only:
+                LOGGER.warning("temp out of range, but ignoring it due to read-only. this could be dangerous for your gpu!")
+                return
             else:
                 LOGGER.debug("temp out of range, setting")
                 card.set_fan_speed(speed)
                 self._last_temp = temp
                 return
 
-        if apply:
+        if apply and not read_only:
             card.set_fan_speed(speed)
             self._last_temp = temp
 
@@ -378,7 +482,7 @@ class FanController:  # pylint: disable=too-few-public-methods
         LOGGER.info("Goodbye")
 
 
-def load_config(path) -> Callable:
+def load_yaml_config_file(path) -> Dict:
     LOGGER.debug("loading config from %s", path)
     with open(path, encoding="utf8") as config_file:
         return yaml.safe_load(config_file)

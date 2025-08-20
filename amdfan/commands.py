@@ -237,7 +237,11 @@ def set_fan_speed(card, speed) -> None:
         selected_card.set_system_controlled_fan(True)
     else:
         LOGGER.info("Setting fan speed to %d", int(input_fan_speed))
-        c.print(selected_card.set_fan_speed(int(input_fan_speed)))
+        try:
+            bytes_written = selected_card.set_fan_speed(int(input_fan_speed))
+            c.print(bytes_written)
+        except RuntimeError:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
