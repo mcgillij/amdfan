@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """manages the amd gpu fans on your system"""
 import atexit
 import os
@@ -6,7 +5,8 @@ import re
 import signal
 import sys
 import threading
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any, ClassVar
 
 import numpy as np
 import yaml
@@ -14,6 +14,10 @@ from numpy import ndarray
 
 from .config import CONFIG_LOCATIONS, HWMON_DIR, LOGGER, ROOT_DIR
 from .defaults import DEFAULT_FAN_CONFIG
+
+
+class DaemonizationError(RuntimeError):
+    """Raised when the process cannot be daemonized."""
 
 
 def create_pidfile(pidfile: str) -> None:
@@ -39,8 +43,10 @@ def daemonize(stdin="/dev/null", stdout="/dev/null", stderr="/dev/null") -> None
         pid = os.fork()
         if pid > 0:
             os._exit(0)
-    except OSError as e:
-        raise Exception("Unable to background amdfan: %s" % e)
+    except OSError as error:
+        raise DaemonizationError(
+            f"Unable to background amdfan: {error}"
+        ) from error
 
     os.chdir("/")
     os.setsid()
@@ -50,8 +56,8 @@ def daemonize(stdin="/dev/null", stdout="/dev/null", stderr="/dev/null") -> None
         pid = os.fork()
         if pid > 0:
             os._exit(0)
-    except OSError as e:
-        raise Exception("Unable to daemonize amdfan: %s" % e)
+    except OSError as error:
+        raise DaemonizationError(f"Unable to daemonize amdfan: {error}") from error
 
     redirect_fd(stdin, stdout, stderr)
 
@@ -117,7 +123,7 @@ class Card:
     """
 
     HWMON_REGEX: str = r"^hwmon\d+$"
-    AMD_FIELDS: List[str] = [
+    AMD_FIELDS: ClassVar[list[str]] = [
         "temp1_input",
         "pwm1_max",
         "pwm1_min",
@@ -139,7 +145,7 @@ class Card:
                 LOGGER.info("skipping card: %s missing endpoint %s", self._id, endpoint)
                 raise FileNotFoundError
 
-    def _load_endpoints(self) -> Dict:
+    def _load_endpoints(self) -> dict:
         _endpoints = {}
         _dir = os.path.join(ROOT_DIR, self._id, HWMON_DIR, self._monitor)
         for endpoint in os.listdir(_dir):
@@ -205,7 +211,7 @@ class Scanner:  # pylint: disable=too-few-public-methods
     """Used to scan the available cards to see if they are usable"""
 
     CARD_REGEX: str = r"^card+\d$"
-    cards: Dict[str, Card]
+    cards: dict[str, Card]
 
     def __init__(self, cards=None) -> None:
         self.cards = self._get_cards(cards)
@@ -333,8 +339,8 @@ class FanController:  # pylint: disable=too-few-public-methods
     @classmethod
     def start_manager(
         cls,
-        notification_fd: Optional[int] = None,
-        pidfile: Optional[str] = None,
+        notification_fd: int | None = None,
+        pidfile: str | None = None,
         daemon=False,
         logfile=None,
     ) -> None:
