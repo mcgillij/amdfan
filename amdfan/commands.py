@@ -5,6 +5,8 @@ import sys
 import time
 
 import click
+from click.shell_completion import CompletionItem
+
 from rich.console import Console
 from rich.live import Live
 from rich.prompt import Prompt
@@ -121,6 +123,9 @@ def run_daemon(
         logfile = None
 
     if action:
+        if pidfile is None:
+            raise ValueError("need a pidfile to perform an action on. none was provided.")
+
         try:
             with open(pidfile) as f:
                 pid = int(f.read())
@@ -171,9 +176,21 @@ def monitor_cards(fps, single_run) -> None:
 class CardOpt(click.ParamType):
     name = "CARD"
 
+    def shell_complete(self, ctx, param, incomplete):
+        return [
+            CompletionItem(name)
+            for name in Scanner().cards
+            if name.startswith(incomplete)
+        ]
+
 
 class SpeedOpt(click.ParamType):
     name = "SPEED"
+
+    def shell_complete(self, ctx, param, incomplete):
+        return [
+            CompletionItem("auto")
+        ] if not incomplete else []
 
 
 @click.command(

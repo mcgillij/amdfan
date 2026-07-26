@@ -1,2 +1,3 @@
 [flake8]
+exclude = venv, .venv
 ignore = E501
