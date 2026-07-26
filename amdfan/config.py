@@ -1,16 +1,14 @@
-#!/usr/bin/env python
 """holds the configuration for the amdfan runtime"""
 import logging
 import os
-from typing import List
 
 from rich.logging import RichHandler
 
-CONFIG_LOCATIONS: List[str] = [
+CONFIG_LOCATIONS: list[str] = [
     "/etc/amdfan.yml",
 ]
 
-DEBUG: bool = bool(os.environ.get("DEBUG", False))
+DEBUG: bool = bool(os.environ.get("DEBUG"))
 LOGGER = logging.getLogger("rich")  # type: ignore
 logging.basicConfig(
     level=logging.DEBUG if DEBUG else logging.INFO,

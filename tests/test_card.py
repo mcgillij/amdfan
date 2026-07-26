@@ -13,13 +13,13 @@ class MockEndpoint:
 
 class MockCard(Card):
     def __init__(self, card_identifier):
-        self._endpoints = dict(
-            temp1_input=MockEndpoint(),
-            pwm1_max=MockEndpoint(pwm_max),
-            pwm1_min=MockEndpoint(pwm_min),
-            pwm1_enable=MockEndpoint(),
-            pwm1=MockEndpoint(),
-        )
+        self._endpoints = {
+            "temp1_input": MockEndpoint(),
+            "pwm1_max": MockEndpoint(pwm_max),
+            "pwm1_min": MockEndpoint(pwm_min),
+            "pwm1_enable": MockEndpoint(),
+            "pwm1": MockEndpoint(),
+        }
 
     def read_endpoint(self, endpoint):
         return self._endpoints[endpoint].value

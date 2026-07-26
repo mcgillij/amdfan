@@ -1,11 +1,8 @@
-#!/usr/bin/env python
 """entry point for amdfan"""
-# noqa: E501
 import os
 import signal
 import sys
 import time
-from typing import Dict
 
 import click
 from click.shell_completion import CompletionItem
@@ -150,7 +147,7 @@ def run_daemon(
         )
 
 
-def show_table(cards: Dict) -> Table:
+def show_table(cards: dict) -> Table:
     table = Table(title="amdgpu")
     table.add_column("Card")
     table.add_column("fan_speed (RPM)")

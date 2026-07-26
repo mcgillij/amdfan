@@ -1,7 +1,5 @@
-#!/usr/bin/env python
 """includes strings to suggest default files"""
 
-from typing import Dict
 
 DEFAULT_FAN_CONFIG: str = """#Fan Control Matrix.
 # [<Temp in C>,<Fanspeed in %>]
@@ -33,7 +31,7 @@ speed_matrix:
 # - card0
 """
 
-SERVICES: Dict[str, str] = {
+SERVICES: dict[str, str] = {
     "systemd": """\
 [Unit]
 Description=amdfan controller

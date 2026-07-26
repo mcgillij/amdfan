@@ -21,6 +21,6 @@ class TestCli(unittest.TestCase):
         result = runner.invoke(cli, ["--service=systemd"])
         assert result.exit_code == 0
 
-        result = runner.invoke(set_fan_speed, input="\n".join(["card0", "25"]))
+        result = runner.invoke(set_fan_speed, input="card0\n25")
         assert result.exception
         assert result.exit_code == 1  # should be permission denied for non-root
